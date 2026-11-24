@@ -1,10 +1,21 @@
-# 钴催化硼化与铁卟啉偶联的计算–实验工作流
+# 可复用的催化计算与实验工作流
+
+仓库自带钴硼化与铁偶联两个研究预设。要换课题，先用 `init` 生成项目，再修改该目录下的配置、结构和数据。[新项目配置与可运行示例](docs/reuse.md)
+
+```bash
+python -m chemflow init my_reaction
+python -m chemflow validate my_reaction
+python -m chemflow run my_reaction --out runs/my_reaction
+```
+
+命令在安装依赖后运行。
+
 
 把有限的合作实验优先放在会改变研究决策的对照上。钴项目关注游离藜芦醚在 HBpin 单一外加硼源、无烯烃受体时能否周转。铁项目关注二级苄基盐和特戊酸的偶联能否发生，以及低效源于前体损失、铁端过程还是竞争反应。
 
 | 任务 | 入口 | 结果 |
 |---|---|---|
-| 先走一遍，不需商业软件或集群 | `python -m chemflow demo --out runs/first` | 两套 ORCA 输入、24 个可导入 COPASI 的 SBML、模型时间曲线和两份首轮实验清单 |
+| 先走一遍，不需商业软件或集群 | `python -m chemflow demo --out runs/first` | 原始两个预设生成两套 ORCA 输入、24 个 SBML 及实验清单；添加项目后 demo 会运行所有已发现的项目，包括显式配置的外部计算。只运行指定课题时用 run |
 | 计算具体结构 | [量子化学操作](docs/quantum.md) | 构象、不同自旋的输入、计算结果检查、配平反应的自由能 |
 | 由实测选择下一次合作实验 | [数据接入与实验决策](docs/data.md) | 守恒检查、留出条件的模型比较、配对区间、下一批实验 CSV |
 | 确定做哪条支路 | [钴项目](projects/co/README.md) · [铁项目](projects/fe/README.md) | 各自的阳性、条件、关键观测、前进或停止条件 |

@@ -1,0 +1,50 @@
+{
+  "fields": {
+    "standards": [
+      "ready",
+      "failed"
+    ]
+  },
+  "stages": [
+    {
+      "id": "calibration",
+      "question": "能否独立定量两种异构体？",
+      "rows": [
+        {
+          "arm": "校准两个标准样",
+          "readout": "响应、回收、定量限",
+          "comparison": "同批比较"
+        }
+      ]
+    },
+    {
+      "id": "paired_start",
+      "question": "改变起始组成能否区分两种速率解释？",
+      "rows": [
+        {
+          "arm": "初始富 E 与初始富 Z 配对",
+          "readout": "E/Z 时间序列与物料衡算",
+          "comparison": "同浓度、同批采样"
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "when": {
+        "standards": "failed"
+      },
+      "review": "先检查响应因子与检测限。"
+    },
+    {
+      "when": {
+        "standards": "ready"
+      },
+      "stage": "paired_start"
+    },
+    {
+      "when": {},
+      "stage": "calibration"
+    }
+  ]
+}

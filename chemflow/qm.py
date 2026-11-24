@@ -9,22 +9,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .network import ROOT, read_json
+from .projects import finite, folder, identifier, manifest, read_json
 
-ELEMENTS = {
-    "H": 1,
-    "B": 5,
-    "C": 6,
-    "N": 7,
-    "O": 8,
-    "F": 9,
-    "P": 15,
-    "S": 16,
-    "Cl": 17,
-    "Co": 27,
-    "Fe": 26,
-    "Br": 35,
-}
+SYMBOLS = """H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og""".split()
+ELEMENTS = {s: i for i, s in enumerate(SYMBOLS, 1)}
+ORGANIC_ELEMENTS = set("H B C N O F Si P S Cl Ge As Se Br Sn Te I".split())
 METHODS = {
     "literature": "wB97X-D3 RIJCOSX def2-TZVP def2/J",
     "screen": "r2SCAN-3c",
@@ -33,11 +22,61 @@ METHODS = {
 JOBS = {"min": "TightOpt Freq", "ts": "OptTS Freq", "sp": "SP", "irc": "IRC"}
 
 
+def solvent_block(preset):
+    if not isinstance(preset, dict):
+        raise ValueError("Solvent preset must be an object")
+    modes = {"gas", "cpcm", "epsilon"}.intersection(preset)
+    if len(modes) != 1:
+        raise ValueError("Solvent preset requires exactly one of gas, cpcm, or epsilon")
+    if "gas" in preset:
+        if preset["gas"] is not True:
+            raise ValueError("Use gas=true for a gas-phase calculation")
+        return "", "", preset.get("label", "gas")
+    if "cpcm" in preset:
+        name = preset["cpcm"]
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name):
+            raise ValueError("Invalid named ORCA solvent")
+        return f"CPCM({name})", "", preset.get("label", name)
+    eps, n = preset["epsilon"], preset["refrac"]
+    if not finite(eps) or not finite(n) or eps < 1 or n < 1:
+        raise ValueError("Invalid dielectric constant or refractive index")
+    return (
+        "CPCM",
+        f"%cpcm epsilon {float(eps)} refrac {n:.2f} end\n"
+        if round(n, 2) == n
+        else f"%cpcm epsilon {eps} refrac {n} end\n",
+        preset.get("label", f"epsilon={eps}, n={n}"),
+    )
+
+
+def qm_settings(project):
+    cfg = manifest(project)["qm"]
+    if (
+        not finite(cfg["temperature_K"])
+        or cfg["temperature_K"] <= 0
+        or "default" not in cfg["solvents"]
+    ):
+        raise ValueError(
+            "QM requires positive temperature_K and a default solvent preset"
+        )
+    for p in cfg["solvents"].values():
+        solvent_block(p)
+    return cfg
+
+
 def get_species(project, name):
-    entries = read_json(ROOT / "projects" / project / "species.json")
+    entries = read_json(folder(project) / "species.json")
     if name not in entries:
         raise ValueError("Unknown species. Options: " + ", ".join(entries))
-    return entries[name]
+    rec = entries[name]
+    identifier(rec.get("seed", name))
+    if (
+        type(rec["charge"]) is not int
+        or not rec["multiplicities"]
+        or any(type(m) is not int or m < 1 for m in rec["multiplicities"])
+    ):
+        raise ValueError(f"{name}: invalid charge or multiplicities")
+    return rec
 
 
 def read_frames(path):
@@ -72,8 +111,17 @@ def geometry(project, name, xyz=None, frame=1):
             raise ValueError("Import literature coordinates first and supply --xyz")
         expected = [el for el, n in rec["composition"].items() for _ in range(n)]
     else:
-        path = ROOT / "projects" / project / "xyz" / (rec.get("seed", name) + ".xyz")
-        expected, default = next(read_frames(path))
+        path = folder(project) / "xyz" / (rec.get("seed", name) + ".xyz")
+        if path.is_file():
+            expected, default = next(read_frames(path))
+        elif rec.get("smiles") and xyz:
+            from .structures import smiles_molecule
+
+            expected = [a.GetSymbol() for a in smiles_molecule(rec).GetAtoms()]
+        else:
+            raise ValueError(
+                f"{name}: missing seed XYZ; use build-xyz and pass its result with --xyz"
+            )
     if not xyz:
         if frame != 1:
             raise ValueError("Multiple frames require --xyz ensemble.xyz")
@@ -93,7 +141,7 @@ def geometry(project, name, xyz=None, frame=1):
 def prepare(args, dest):
     rec, els, body = geometry(args.project, args.species, args.xyz, args.frame)
     charge = rec["charge"]
-    mult = args.mult or rec["multiplicities"][0]
+    mult = rec["multiplicities"][0] if args.mult is None else args.mult
     if (
         mult not in rec["multiplicities"]
         or (sum(ELEMENTS[e] for e in els) - charge - (mult - 1)) % 2
@@ -105,35 +153,34 @@ def prepare(args, dest):
         )
     if args.cores < 1 or args.memory < 100:
         raise ValueError("Check cores and memory (MB per core)")
+    cfg = qm_settings(args.project)
     temp = (
-        args.temperature
-        if getattr(args, "temperature", None) is not None
-        else (323.15 if args.project == "co" else 298.15)
+        cfg["temperature_K"]
+        if getattr(args, "temperature", None) is None
+        else args.temperature
     )
-    if not math.isfinite(temp) or temp <= 0:
+    if not finite(temp) or temp <= 0:
         raise ValueError("Temperature must be positive in K")
-    if getattr(args, "reference_solvent", None):
+    name = getattr(args, "reference_solvent", None)
+    if name:
         if args.solvation != "default":
-            raise ValueError("Choose a reference solvent or dielectric sensitivity")
-        name = args.reference_solvent
-        solvent = "" if name == "gas" else f"CPCM({name})"
-        block = ""
-        note = f"Reference medium: {name}"
-    elif args.project == "co":
-        if args.solvation != "default":
-            raise ValueError("Fe-only dielectric sensitivity option")
-        solvent = "CPCM(THF)"
-        block = ""
-        note = "THF"
+            raise ValueError(
+                "Choose either reference solvent or a project solvent preset"
+            )
+        preset = {"gas": True} if name == "gas" else {"cpcm": name}
+        preset["label"] = f"Reference medium: {name}"
     else:
-        eps = {"low": 22.0, "default": 30.0, "high": 38.0}[args.solvation]
-        solvent = "CPCM"
-        block = f"%cpcm epsilon {eps:.1f} refrac 1.40 end\n"
-        note = f"DMA/iPrOH continuum sensitivity eps={eps}; assumed, n=1.40"
+        if args.solvation not in cfg["solvents"]:
+            raise ValueError("Available solvent presets: " + ", ".join(cfg["solvents"]))
+        preset = cfg["solvents"][args.solvation]
+    solvent, block, note = solvent_block(preset)
+    methods = {**METHODS, **cfg.get("methods", {})}
+    if args.method not in methods:
+        raise ValueError("Available method names: " + ", ".join(methods))
     geom = "%geom Calc_Hess true end\n" if args.stage == "ts" else ""
     freq = f"%freq Temp {temp:.2f} end\n" if args.stage in ("min", "ts") else ""
     parallel = f"%pal nprocs {args.cores} end\n" if args.cores > 1 else ""
-    header = f"! {METHODS[args.method]} TightSCF {JOBS[args.stage]} {solvent}\n"
+    header = f"! {methods[args.method]} TightSCF {JOBS[args.stage]} {solvent}\n"
     text = header + parallel + f"%maxcore {args.memory}\n" + block + geom + freq
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "geom.xyz").write_text(body)
@@ -141,9 +188,9 @@ def prepare(args, dest):
     meta = dict(
         project=args.project,
         species=args.species,
-        note=rec["note"],
+        note=rec.get("note", ""),
         stage=args.stage,
-        method=METHODS[args.method],
+        method=methods[args.method],
         temperature_K=temp,
         solvent=note,
         charge=charge,
@@ -156,8 +203,13 @@ def prepare(args, dest):
 
 
 def conformers(args, dest):
-    rec, els, body = geometry(args.project, args.species)
-    if "Fe" in els or "Co" in els:
+    rec, els, body = geometry(
+        args.project,
+        args.species,
+        getattr(args, "xyz", None),
+        getattr(args, "frame", 1),
+    )
+    if not rec.get("crest_enabled", set(els) <= ORGANIC_ELEMENTS):
         raise ValueError(
             "Use reviewed coordination/spin alternatives for metals; this preset is organic only"
         )
@@ -168,7 +220,7 @@ def conformers(args, dest):
         raise ValueError("--cores must be positive")
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "start.xyz").write_text(body)
-    solvent = "thf" if args.project == "co" else "dmso"
+    solvent = qm_settings(args.project).get("crest_solvent")
     command = [
         str(Path(exe).resolve()),
         "start.xyz",
@@ -177,8 +229,7 @@ def conformers(args, dest):
         str(rec["charge"]),
         "--uhf",
         str(rec["multiplicities"][0] - 1),
-        "--alpb",
-        solvent,
+        *(["--alpb", solvent] if solvent else []),
         "-T",
         str(args.cores),
     ]
@@ -272,3 +323,21 @@ def orca_audit(folder):
         ).hexdigest(),
         "interpretation": "Review spin, structure and TS mode/IRC. Energies are not yields.",
     }
+
+
+def run_orca(job, exe_name):
+    exe = shutil.which(exe_name)
+    if not exe:
+        raise ValueError("Install licensed ORCA; supply --exe /full/path/to/orca")
+    manifest = job / "manifest.json"
+    if not manifest.is_file() or not (job / "job.inp").is_file():
+        raise ValueError("Use a prepared directory")
+    with (job / "orca.out").open("x") as out:
+        subprocess.run(
+            [str(Path(exe).resolve()), "job.inp"],
+            cwd=job,
+            stdout=out,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+    return orca_audit(job)

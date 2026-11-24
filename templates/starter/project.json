@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "title": "E/Z 异构化 · 教学模板",
+  "workflow": [
+    "prepare",
+    {
+      "step": "fit",
+      "id": "estimate",
+      "data": "examples/observations.csv"
+    },
+    {
+      "step": "simulate",
+      "id": "forecast",
+      "calibrated": "@estimate/calibrated.json"
+    },
+    {
+      "step": "balance",
+      "id": "closure",
+      "data": "examples/material.csv"
+    },
+    "handoff"
+  ],
+  "qm": {
+    "temperature_K": 303.15,
+    "crest_solvent": "toluene",
+    "solvents": {
+      "default": {
+        "cpcm": "toluene"
+      }
+    },
+    "jobs": [
+      {
+        "species": "E_butene",
+        "mult": 1
+      }
+    ]
+  },
+  "paired": {
+    "practical": 50,
+    "gap": 10,
+    "min_blocks": 3
+  }
+}

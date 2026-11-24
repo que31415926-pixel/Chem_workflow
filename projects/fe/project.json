@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "title": "铁卟啉偶联",
+  "workflow": [
+    "simulate",
+    "handoff",
+    "prepare"
+  ],
+  "qm": {
+    "temperature_K": 298.15,
+    "crest_solvent": "dmso",
+    "solvents": {
+      "default": {
+        "epsilon": 30.0,
+        "refrac": 1.4,
+        "label": "DMA/iPrOH continuum sensitivity eps=30.0; assumed, n=1.40"
+      },
+      "low": {
+        "epsilon": 22.0,
+        "refrac": 1.4,
+        "label": "DMA/iPrOH continuum sensitivity eps=22.0; assumed, n=1.40"
+      },
+      "high": {
+        "epsilon": 38.0,
+        "refrac": 1.4,
+        "label": "DMA/iPrOH continuum sensitivity eps=38.0; assumed, n=1.40"
+      }
+    },
+    "jobs": [
+      {
+        "species": "fe_oep_cl",
+        "mult": 6
+      }
+    ]
+  },
+  "paired": {
+    "practical": 30,
+    "gap": 15,
+    "min_blocks": 3
+  }
+}

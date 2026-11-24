@@ -1,0 +1,28 @@
+{
+  "fields": [
+    "alkene_in",
+    "E_end",
+    "Z_end"
+  ],
+  "metrics": {
+    "Z_yield_pct": {
+      "numerator": {
+        "Z_end": 1
+      },
+      "denominator": {
+        "alkene_in": 1
+      },
+      "scale": 100
+    },
+    "alkene_recovery_pct": {
+      "numerator": {
+        "E_end": 1,
+        "Z_end": 1
+      },
+      "denominator": {
+        "alkene_in": 1
+      },
+      "scale": 100
+    }
+  }
+}

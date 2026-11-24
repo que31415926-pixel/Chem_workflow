@@ -1,4 +1,4 @@
-"""Fit one tractable rate per hypothesis and score independent observed conditions."""
+"""Fit configured rates per hypothesis and score independent observed conditions."""
 
 import csv
 import math
@@ -50,11 +50,11 @@ def observations(path, net):
     return rows
 
 
-def residuals(net, h, rows, key, value):
+def residuals(net, h, rows, rates):
     predictions = {}
     for c in sorted({r["condition"] for r in rows}):
         times = sorted({r["time_h"] for r in rows if r["condition"] == c})
-        vals = net.simulate(h, c, times, {key: value})
+        vals = net.simulate(h, c, times, rates)
         for j, t in enumerate(times):
             predictions[c, t] = dict(zip(net.names, vals[:, j]))
     result = []
@@ -85,35 +85,48 @@ def fit(net, path, dest):
     all_rows = []
     params = {}
     for h, definition in net.hypotheses.items():
-        key = definition["fit"]
-        start = net.settings(h, "base")[1][key]
+        requested = definition.get("fit")
+        if not requested:
+            raise ValueError(f"{h}: declare one or more rate IDs to fit")
+        keys = [requested] if isinstance(requested, str) else requested
+        base = {r["id"]: r["k"] for r in net.rx}
+        base.update(definition["rates"])
+        starts = np.array([base[k] for k in keys], dtype=float)
+        if np.any(starts <= 0):
+            raise ValueError(f"{h}: fitted rates must start positive")
+        factor = definition.get("fit_factor", 100.0)
+        if not math.isfinite(factor) or factor <= 1:
+            raise ValueError("fit_factor must exceed 1")
 
-        def fun(log_factor):
-            attempt = start * np.exp(log_factor[0])
-            return [
-                r["weighted_residual"] for r in residuals(net, h, train, key, attempt)
-            ]
+        def rates(x):
+            return {k: float(v) for k, v in zip(keys, starts * np.exp(x), strict=True)}
 
-        fitted = least_squares(fun, [0.0], bounds=([-np.log(100.0)], [np.log(100.0)]))
+        def fun(x):
+            return [r["weighted_residual"] for r in residuals(net, h, train, rates(x))]
+
+        fitted = least_squares(
+            fun, np.zeros(len(keys)), bounds=(-np.log(factor), np.log(factor))
+        )
         if not fitted.success:
             raise ValueError("Fit failed for " + h)
-        value = float(start * np.exp(fitted.x[0]))
-        params[h] = {key: value}
+        params[h] = rates(fitted.x)
         for split, subset in [("train", train), ("holdout", holdout)]:
-            pred = residuals(net, h, subset, key, value)
+            pred = residuals(net, h, subset, params[h])
             errors = [r["weighted_residual"] for r in pred]
-            scores.append(
-                dict(
-                    hypothesis=h,
-                    fit_parameter=key,
-                    fitted_value=value,
-                    split=split,
-                    n=len(errors),
-                    at_search_bound=bool(np.any(fitted.active_mask)),
-                    weighted_rms=float(np.sqrt(np.mean(np.square(errors)))),
+            for i, key in enumerate(keys):
+                scores.append(
+                    dict(
+                        hypothesis=h,
+                        fit_parameter=key,
+                        fitted_value=params[h][key],
+                        split=split,
+                        n=len(errors),
+                        at_search_bound=bool(fitted.active_mask[i]),
+                        weighted_rms=float(np.sqrt(np.mean(np.square(errors)))),
+                    )
                 )
-            )
             all_rows.extend(pred)
+
     dest.mkdir(parents=True, exist_ok=True)
     write_table(dest / "scores.csv", scores[0].keys(), scores)
     write_table(dest / "residuals.csv", all_rows[0].keys(), all_rows)
@@ -122,12 +135,13 @@ def fit(net, path, dest):
             {
                 "project": net.project,
                 "parameters": params,
+                "network_sha256": net.fingerprint,
                 "provenance": {
                     "origin": sorted({r.get("origin", "unspecified") for r in rows}),
                     "data_sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-                    "parameter_status": "one_param_per_hypothesis",
+                    "parameter_status": "configured_rates_per_hypothesis",
                 },
-                "note": "One fitted rate per hypothesis; all other parameters retain their scenario values.",
+                "note": "Only the configured rates are fitted; other rates retain their scenario values.",
             },
             indent=2,
         )

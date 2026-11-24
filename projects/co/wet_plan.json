@@ -27,7 +27,6 @@
   "stages": [
     {
       "id": "C0",
-      "when": {},
       "question": "先确认母体、标品和方法能工作。",
       "rows": [
         {
@@ -39,9 +38,6 @@
     },
     {
       "id": "C1",
-      "when": {
-        "controls": "pass"
-      },
       "question": "在目标条件下，现成的催化剂能否满足要求？",
       "rows": [
         {
@@ -63,11 +59,6 @@
     },
     {
       "id": "C2",
-      "when": {
-        "controls": "pass",
-        "parent": "shortfall",
-        "balance": "pass"
-      },
       "question": "用一项配对干预区分当前最难区分的解释。",
       "rows": [
         {
@@ -79,12 +70,6 @@
     },
     {
       "id": "C3H",
-      "when": {
-        "controls": "pass",
-        "parent": "shortfall",
-        "balance": "pass",
-        "signal": "H2"
-      },
       "question": "判明已知母体能否靠条件改善处理氢抑制。",
       "rows": [
         {
@@ -96,12 +81,6 @@
     },
     {
       "id": "C3C4",
-      "when": {
-        "controls": "pass",
-        "parent": "shortfall",
-        "balance": "pass",
-        "signal": "C4"
-      },
       "question": "验证 C4 加成是否造成可持续失活。",
       "rows": [
         {
@@ -113,12 +92,6 @@
     },
     {
       "id": "C3CH",
-      "when": {
-        "controls": "pass",
-        "parent": "shortfall",
-        "balance": "pass",
-        "signal": "CH"
-      },
       "question": "检验 C–H 活化是否对目标产物通量有影响。",
       "rows": [
         {
@@ -128,5 +101,130 @@
         }
       ]
     }
+  ],
+  "rules": [
+    {
+      "when": {
+        "controls": "fail"
+      },
+      "review": "修复阳性、标品或回收，重新验证装置及同批对照。"
+    },
+    {
+      "when": {
+        "controls": "unknown"
+      },
+      "stage": "C0"
+    },
+    {
+      "when": {
+        "balance": "fail"
+      },
+      "review": "补查液相/气相校准、硼和氢收支、未归属峰与回收，再作路线判断。"
+    },
+    {
+      "when": {
+        "parent": "uncertain"
+      },
+      "review": "补独立日配对或改进定量限，保留原始区间。"
+    },
+    {
+      "when": {
+        "parent": "meets",
+        "balance": "unknown"
+      },
+      "review": "先闭合氢/硼收支并复核目标产物和候选基准。"
+    },
+    {
+      "when": {
+        "parent": "meets",
+        "heldout": "unknown"
+      },
+      "review": "暂停开发新配体，在未参与选择的一种真实底物或条件上冻结预测并同批验证。"
+    },
+    {
+      "when": {
+        "parent": "meets",
+        "heldout": "fail"
+      },
+      "review": "限定结论到已验证底物，记录留出失败的适用边界。"
+    },
+    {
+      "when": {
+        "parent": "meets",
+        "heldout": "pass"
+      },
+      "review": "整理同批对照、独立验证与不确定度，结束这一轮。"
+    },
+    {
+      "when": {
+        "parent": "shortfall",
+        "balance": "unknown"
+      },
+      "review": "在选干预前完成目标格的芳基硼酸酯、硼、氢及空白收支。"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass",
+        "signal": "CH"
+      },
+      "stage": "C3CH"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass",
+        "signal": "C4"
+      },
+      "stage": "C3C4"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass",
+        "signal": "H2"
+      },
+      "stage": "C3H"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass"
+      },
+      "stage": "C2"
+    },
+    {
+      "when": {
+        "controls": "pass"
+      },
+      "stage": "C1"
+    },
+    {
+      "when": {},
+      "stage": "C0"
+    }
+  ],
+  "record_columns": [
+    "project",
+    "arm",
+    "batch",
+    "vial",
+    "time_h",
+    "light_or_headspace",
+    "salt_scaffold_or_catalyst",
+    "analyte",
+    "value",
+    "unit",
+    "method",
+    "LOD",
+    "LOQ",
+    "recovery",
+    "qc",
+    "evidence_file",
+    "note"
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "E_butene": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "trans-2-butene; ETKDG/UFF initial guess",
+    "smiles": "C/C=C/C"
+  },
+  "Z_butene": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "cis-2-butene; ETKDG/UFF initial guess",
+    "smiles": "C/C=C\\C"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "baseline": "reference",
+  "end_h": 6,
+  "times_h": [
+    0,
+    1,
+    3,
+    6
+  ],
+  "initial_M": {
+    "E": 0.1,
+    "Z": 0
+  },
+  "species_labels": {
+    "E": "E-isomer",
+    "Z": "Z-isomer"
+  },
+  "conserved": {
+    "alkene": {
+      "E": 1,
+      "Z": 1
+    }
+  },
+  "reactions": [
+    {
+      "id": "forward",
+      "lhs": {
+        "E": 1
+      },
+      "rhs": {
+        "Z": 1
+      },
+      "k": 0.25
+    },
+    {
+      "id": "reverse",
+      "lhs": {
+        "Z": 1
+      },
+      "rhs": {
+        "E": 1
+      },
+      "k": 0.08
+    }
+  ],
+  "hypotheses": {
+    "slow_forward": {
+      "rates": {
+        "forward": 0.05
+      },
+      "fit": "forward"
+    },
+    "fast_reverse": {
+      "rates": {
+        "reverse": 1.5
+      },
+      "fit": "reverse"
+    }
+  },
+  "conditions": {
+    "reference": {},
+    "Z_enriched": {
+      "initial_M": {
+        "E": 0.02,
+        "Z": 0.08
+      }
+    }
+  },
+  "panels": [
+    {
+      "condition": "Z_enriched",
+      "observable": "Z",
+      "time_h": 3,
+      "sd_M": 0.002
+    }
+  ],
+  "status": "Entirely synthetic mass-action example; no measured isomerization rates or experimental recommendations."
+}

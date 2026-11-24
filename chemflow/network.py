@@ -1,6 +1,7 @@
 """Explicit mass action in mol/L, hours. One litre is a normalization volume."""
 
 import csv
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -8,13 +9,8 @@ from pathlib import Path
 import numpy as np
 from scipy.integrate import solve_ivp
 
-ROOT = Path(__file__).resolve().parents[1]
-PROJECTS = ("co", "fe")
-
-
-def read_json(path):
-    with Path(path).open(encoding="utf-8") as source:
-        return json.load(source)
+from .projects import ROOT as ROOT
+from .projects import finite, folder, identifier, manifest, read_json
 
 
 def write_table(path, columns, rows):
@@ -24,10 +20,92 @@ def write_table(path, columns, rows):
         writer.writerows(rows)
 
 
+def validate_network(data):
+    names = set(data["initial_M"])
+    if not names or set(data["species_labels"]) != names:
+        raise ValueError(
+            "Every network species requires an initial concentration and label"
+        )
+    for key in names:
+        identifier(key)
+    reserved = {"vial", "k", "time_h", "hypothesis", "condition"}
+    if names & reserved:
+        raise ValueError("Reserved species name: " + str(names & reserved))
+    if any(not finite(v) or v < 0 for v in data["initial_M"].values()):
+        raise ValueError("Invalid initial concentrations")
+    rx = data["reactions"]
+    ids = {identifier(r["id"]) for r in rx}
+    if not rx or len(ids) != len(rx):
+        raise ValueError("Reaction IDs must be unique")
+    for r in rx:
+        if not finite(r["k"]) or r["k"] < 0:
+            raise ValueError(f"{r['id']}: invalid rate")
+        for side in ("lhs", "rhs"):
+            if set(r[side]) - names or any(
+                type(v) is not int or v <= 0 for v in r[side].values()
+            ):
+                raise ValueError(f"{r['id']}: invalid species or stoichiometry")
+    for law, weights in data["conserved"].items():
+        if (
+            set(weights) - names
+            or not weights
+            or any(not finite(v) for v in weights.values())
+        ):
+            raise ValueError(f"{law}: invalid conservation coefficients")
+
+    def overrides(mapping, allowed):
+        if set(mapping) - allowed or any(
+            not finite(v) or v < 0 for v in mapping.values()
+        ):
+            raise ValueError(f"Unknown key or invalid nonnegative value: {mapping}")
+
+    for name, cond in data["conditions"].items():
+        identifier(name)
+        overrides(cond.get("initial_M", {}), names)
+        for key in ("rate_values", "rate_factors"):
+            overrides(cond.get(key, {}), ids)
+    if not data["hypotheses"] or data["baseline"] not in data["conditions"]:
+        raise ValueError("Provide hypotheses and name an existing baseline condition")
+    for name, h in data["hypotheses"].items():
+        identifier(name)
+        overrides(h["rates"], ids)
+        keys = h.get("fit", [])
+        keys = [keys] if isinstance(keys, str) else keys
+        if not isinstance(keys, list) or len(set(keys)) != len(keys) or set(keys) - ids:
+            raise ValueError(f"{name}: unknown fit parameter")
+    end = data["end_h"]
+    times = data["times_h"]
+    if (
+        not finite(end)
+        or end <= 0
+        or not times
+        or any(not finite(t) or not 0 <= t <= end for t in times)
+        or any(a >= b for a, b in zip(times, times[1:]))
+    ):
+        raise ValueError("Invalid time grid or observation window")
+    for p in data.get("panels", []):
+        if (
+            p["condition"] not in data["conditions"]
+            or p.get("baseline", data["baseline"]) not in data["conditions"]
+            or p["observable"] not in names
+            or not finite(p["time_h"])
+            or not 0 <= p["time_h"] <= end
+            or not finite(p["sd_M"])
+            or p["sd_M"] <= 0
+        ):
+            raise ValueError(f"Invalid diagnostic panel: {p}")
+
+
 class Network:
     def __init__(self, project, calibrated=None):
         self.project = project
-        self.data = read_json(ROOT / "projects" / project / "network.json")
+        manifest(project)
+        self.data = read_json(folder(project) / "network.json")
+        self.fingerprint = hashlib.sha256(
+            json.dumps(self.data, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        validate_network(self.data)
+        self.baseline = self.data["baseline"]
         self.names = list(self.data["initial_M"])
         self.rx = self.data["reactions"]
         self.hypotheses = self.data["hypotheses"]
@@ -45,7 +123,16 @@ class Network:
                     "Calibration belongs to a different project or hypotheses"
                 )
             self.provenance = fitted.get("provenance", {"origin": "unknown_fit"})
+            if fitted.get("network_sha256", self.fingerprint) != self.fingerprint:
+                raise ValueError(
+                    "Calibration belongs to different network settings; refit this project"
+                )
             self.calibrated = fitted["parameters"]
+            for overrides in self.calibrated.values():
+                if set(overrides) - {r["id"] for r in self.rx} or not all(
+                    finite(v) and v >= 0 for v in overrides.values()
+                ):
+                    raise ValueError("Unknown or invalid calibrated parameter")
         else:
             self.calibrated = {}
         self.stoich = np.zeros((len(self.names), len(self.rx)))
@@ -60,6 +147,7 @@ class Network:
         self.balances = np.array(
             [[v.get(n, 0) for n in self.names] for v in self.data["conserved"].values()]
         )
+        self.balances = self.balances.reshape(-1, len(self.names))
         if not np.allclose(self.balances @ self.stoich, 0):
             raise ValueError("Unbalanced reaction in " + project)
 
@@ -234,7 +322,7 @@ def run_scenarios(net, dest):
                     )
                 )
             net.export_sbml(h, c, dest / f"{h}__{c}.xml")
-    for panel in net.data["panels"]:
+    for panel in net.data.get("panels", []):
         c = panel["condition"]
         predictions = []
         for h in hyps:
@@ -242,7 +330,7 @@ def run_scenarios(net, dest):
             t = [panel["time_h"]]
             i = net.names.index(obs)
             perturbed = net.simulate(h, c, t)[i, 0]
-            baseline = net.simulate(h, "base", t)[i, 0]
+            baseline = net.simulate(h, panel.get("baseline", net.baseline), t)[i, 0]
             predictions.append(perturbed - baseline)
         for a in range(len(hyps)):
             for b in range(a + 1, len(hyps)):
@@ -266,7 +354,17 @@ def run_scenarios(net, dest):
     )
     write_table(
         dest / "diagnostics.csv",
-        list(panels[0]),
+        [
+            "condition",
+            "observable",
+            "time_h",
+            "A",
+            "B",
+            "change_A_M",
+            "change_B_M",
+            "assumed_sd_of_contrast_M",
+            "separation",
+        ],
         sorted(panels, key=lambda x: -x["separation"]),
     )
     return len(rows)

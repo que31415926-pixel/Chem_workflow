@@ -1,0 +1,86 @@
+{
+  "fields": [
+    "arene_in",
+    "hbpin_in",
+    "b2_in",
+    "co_atoms_in",
+    "target",
+    "arene_left",
+    "other_aryl_mono",
+    "aryl_di",
+    "hbpin_left",
+    "b2_left",
+    "other_b_atoms",
+    "h2_gas",
+    "h2_liquid",
+    "blank_h2_total"
+  ],
+  "metrics": {
+    "target_yield_pct": {
+      "numerator": {
+        "target": 1
+      },
+      "denominator": {
+        "arene_in": 1
+      },
+      "scale": 100
+    },
+    "TON_total_Co": {
+      "numerator": {
+        "target": 1
+      },
+      "denominator": {
+        "co_atoms_in": 1
+      },
+      "scale": 1
+    },
+    "target_B_efficiency_pct": {
+      "numerator": {
+        "target": 1
+      },
+      "denominator": {
+        "hbpin_in": 1,
+        "b2_in": 2
+      },
+      "scale": 100
+    },
+    "assigned_B_pct": {
+      "numerator": {
+        "target": 1,
+        "other_aryl_mono": 1,
+        "aryl_di": 2,
+        "hbpin_left": 1,
+        "b2_left": 2,
+        "other_b_atoms": 1
+      },
+      "denominator": {
+        "hbpin_in": 1,
+        "b2_in": 2
+      },
+      "scale": 100
+    },
+    "assigned_arene_pct": {
+      "numerator": {
+        "target": 1,
+        "other_aryl_mono": 1,
+        "aryl_di": 1,
+        "arene_left": 1
+      },
+      "denominator": {
+        "arene_in": 1
+      },
+      "scale": 100
+    },
+    "blank_corrected_H2_per_target": {
+      "numerator": {
+        "h2_gas": 1,
+        "h2_liquid": 1,
+        "blank_h2_total": -1
+      },
+      "denominator": {
+        "target": 1
+      },
+      "scale": 1
+    }
+  }
+}

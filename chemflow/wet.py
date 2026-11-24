@@ -1,94 +1,99 @@
-"""Produce only the next actionable comparison. Evidence flags are reviewed by a chemist."""
+"""Select the next wet-lab batch using ordered rules declared by each project."""
 
-from .network import ROOT, read_json, write_table
+from .network import write_table
+from .projects import folder, read_json
+
+
+def checked_plan(project):
+    plan = read_json(folder(project) / "wet_plan.json")
+    fields = plan["fields"]
+    stages = {s["id"]: s for s in plan["stages"]}
+    if len(stages) != len(plan["stages"]):
+        raise ValueError("Duplicate wet stage IDs")
+    for stage in stages.values():
+        if (
+            not stage.get("question")
+            or not stage.get("rows")
+            or any(set(r) != {"arm", "readout", "comparison"} for r in stage["rows"])
+        ):
+            raise ValueError(f"Incomplete wet stage: {stage['id']}")
+    rules = plan["rules"]
+    if not rules or rules[-1]["when"] or any(not r["when"] for r in rules[:-1]):
+        raise ValueError(
+            "Wet rules use first match; put a single unconditional fallback last"
+        )
+    for rule in rules:
+        if ("stage" in rule) == ("review" in rule) or (
+            "stage" in rule and rule["stage"] not in stages
+        ):
+            raise ValueError("Each wet rule requires a known stage or review message")
+    for entry in [*rules, *plan.get("notes", [])]:
+        for k, v in entry["when"].items():
+            vals = v if isinstance(v, list) else [v]
+            if k not in fields or not vals or set(vals) - {"unknown", *fields[k]}:
+                raise ValueError(f"Invalid wet condition {k}={v!r}")
+    return plan, stages
 
 
 def handoff(project, state_path, dest):
-    plan = read_json(ROOT / "projects" / project / "wet_plan.json")
-    state = read_json(state_path or (ROOT / "projects" / project / "state.json"))
+    plan, stages = checked_plan(project)
+    state = read_json(state_path or folder(project) / "state.json")
     fields = plan["fields"]
     if set(state) != set(fields) or any(
         v not in ["unknown", *fields[k]] for k, v in state.items()
     ):
         raise ValueError("Invalid state keys/values; see wet_plan.json")
-    stage = None
-    action = None
-    if state["controls"] == "fail":
-        action = "修复阳性、标品或回收，重新验证装置及同批对照。"
-    elif state["controls"] == "unknown":
-        stage = plan["stages"][0]
-    elif project == "fe" and state["salt"] in ("unknown", "unusable"):
-        action = "先定量实际可递送的盐，核对暗置损失并检查有同骨架一级对照的改环前体。原盐不可投足时铁端记为不可评价。"
-    elif project == "co" and state["balance"] == "fail":
-        action = "补查液相/气相校准、硼和氢收支、未归属峰与回收，再作路线判断。"
-    else:
-        outcome = state["parent"] if project == "co" else state["target"]
-        if outcome == "uncertain":
-            action = "补独立日配对或改进定量限，保留原始区间。"
-        elif outcome in ("works", "meets"):
-            if project == "co" and state["balance"] != "pass":
-                action = "先闭合氢/硼收支并复核目标产物和候选基准。"
-            elif state["heldout"] == "unknown":
-                action = "暂停开发新配体，在未参与选择的一种真实底物或条件上冻结预测并同批验证。"
-            elif state["heldout"] == "fail":
-                action = "限定结论到已验证底物，记录留出失败的适用边界。"
-            else:
-                action = "整理同批对照、独立验证与不确定度，结束这一轮。"
-        elif (
-            project == "co" and outcome == "shortfall" and state["balance"] == "unknown"
-        ):
-            action = "在选干预前完成目标格的芳基硼酸酯、硼、氢及空白收支。"
-        else:
-            eligible = [
-                s
-                for s in plan["stages"]
-                if all(state[k] == v for k, v in s["when"].items())
-            ]
-            stage = eligible[-1]
-    dest.mkdir(parents=True, exist_ok=True)
-    if stage:
+
+    def matches(when):
+        return all(
+            state[k] in (v if isinstance(v, list) else [v]) for k, v in when.items()
+        )
+
+    selected = next(rule for rule in plan["rules"] if matches(rule["when"]))
+    if "stage" in selected:
+        stage = stages[selected["stage"]]
         rows = [
             dict(phase=stage["id"], question=stage["question"], **r)
             for r in stage["rows"]
         ]
-        if project == "fe" and state["salt"] == "modified_only":
-            for r in rows:
-                r["comparison"] += "；本轮仅改环系列。原三苯环的目标配对记不可评价。"
+        suffix = "".join(
+            n["comparison"] for n in plan.get("notes", []) if matches(n["when"])
+        )
+        for row in rows:
+            row["comparison"] += suffix
     else:
         rows = [
             dict(
                 phase="review",
                 question="根据实际证据更新判断",
-                arm=action,
+                arm=selected["review"],
                 readout="记录证据文件、批号、定量方式和局限",
                 comparison="同批参照",
             )
         ]
+    dest.mkdir(parents=True, exist_ok=True)
     write_table(dest / "next_batch.csv", rows[0].keys(), rows)
-    cols = [
-        "project",
-        "arm",
-        "batch",
-        "vial",
-        "time_h",
-        "light_or_headspace",
-        "salt_scaffold_or_catalyst",
-        "analyte",
-        "value",
-        "unit",
-        "method",
-        "LOD",
-        "LOQ",
-        "recovery",
-        "qc",
-        "evidence_file",
-        "note",
-    ]
-    write_table(dest / "wet_records_blank.csv", cols, [])
+    write_table(
+        dest / "wet_records_blank.csv",
+        plan.get(
+            "record_columns",
+            [
+                "batch",
+                "arm",
+                "time_h",
+                "analyte",
+                "value",
+                "unit",
+                "qc",
+                "evidence_file",
+            ],
+        ),
+        [],
+    )
     return rows
 
 
-def paired(path, delta=15.0, practical=30.0):
+def paired(path, delta=15.0, practical=30.0, min_blocks=3):
     """Bound paired means / t intervals using independent-day lower and upper limits.
     For censored intervals use bounds on sample SD, not substitution by zero/LOQ.
     """
@@ -119,9 +124,9 @@ def paired(path, delta=15.0, practical=30.0):
         measures["target"].append((tlo, thi))
         measures["reference_minus_target"].append((rlo - thi, rhi - tlo))
     n = len(days)
-    if n < 3:
+    if min_blocks < 2 or n < min_blocks:
         raise ValueError(
-            "Project decision rule requires at least three independent matched blocks"
+            f"Require at least {max(2, min_blocks)} independent matched blocks"
         )
     result = {"n": n, "practical_target_pct": practical, "paired_gap_points": delta}
     crit = t.ppf(0.975, n - 1)

@@ -1,0 +1,7 @@
+split,batch,condition,time_h,species,value_M,sigma_M,kind,origin
+train,model_example,reference,1,Z,0.008276569,0.0005,value,synthetic_fixture
+train,model_example,reference,3,Z,0.021150234,0.0005,value,synthetic_fixture
+train,model_example,reference,6,Z,0.033850856,0.0005,value,synthetic_fixture
+holdout,model_example,Z_enriched,1,Z,0.075769754,0.0005,value,synthetic_fixture
+holdout,model_example,Z_enriched,3,Z,0.06918988,0.0005,value,synthetic_fixture
+holdout,model_example,Z_enriched,6,Z,0.062698451,0.0005,value,synthetic_fixture

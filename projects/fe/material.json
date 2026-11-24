@@ -1,0 +1,48 @@
+{
+  "fields": [
+    "salt_effective_in",
+    "acid_in",
+    "target",
+    "salt_left",
+    "benzyl_dimer",
+    "benzyl_side_eq",
+    "acid_left",
+    "tert_dimer",
+    "tert_side_eq"
+  ],
+  "metrics": {
+    "target_yield_on_acid_pct": {
+      "numerator": {
+        "target": 1
+      },
+      "denominator": {
+        "acid_in": 1
+      },
+      "scale": 100
+    },
+    "assigned_benzyl_pct": {
+      "numerator": {
+        "target": 1,
+        "salt_left": 1,
+        "benzyl_dimer": 2,
+        "benzyl_side_eq": 1
+      },
+      "denominator": {
+        "salt_effective_in": 1
+      },
+      "scale": 100
+    },
+    "assigned_tert_pct": {
+      "numerator": {
+        "target": 1,
+        "acid_left": 1,
+        "tert_dimer": 2,
+        "tert_side_eq": 1
+      },
+      "denominator": {
+        "acid_in": 1
+      },
+      "scale": 100
+    }
+  }
+}

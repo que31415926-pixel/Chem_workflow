@@ -27,7 +27,6 @@
   "stages": [
     {
       "id": "F0",
-      "when": {},
       "question": "先确认实际投进去的盐和能复现的阳性。",
       "rows": [
         {
@@ -44,9 +43,6 @@
     },
     {
       "id": "F1",
-      "when": {
-        "controls": "pass"
-      },
       "question": "先测最直接的酸法配对。",
       "rows": [
         {
@@ -68,10 +64,6 @@
     },
     {
       "id": "F2",
-      "when": {
-        "controls": "pass",
-        "target": "low"
-      },
       "question": "确认低效能否在绕开盐时改善。",
       "rows": [
         {
@@ -83,11 +75,6 @@
     },
     {
       "id": "F3R",
-      "when": {
-        "controls": "pass",
-        "target": "low",
-        "supply": "rescued"
-      },
       "question": "前体优先，验证恢复是否可重复。",
       "rows": [
         {
@@ -99,11 +86,6 @@
     },
     {
       "id": "F3D",
-      "when": {
-        "controls": "pass",
-        "target": "low",
-        "supply": "downstream"
-      },
       "question": "区分铁捕获、Fe–C 寿命与后续取代。",
       "rows": [
         {
@@ -112,6 +94,116 @@
           "comparison": "仅在检测限和供给可比时解释；先简单铁卟啉对照，再决定合成新配体"
         }
       ]
+    }
+  ],
+  "rules": [
+    {
+      "when": {
+        "controls": "fail"
+      },
+      "review": "修复阳性、标品或回收，重新验证装置及同批对照。"
+    },
+    {
+      "when": {
+        "controls": "unknown"
+      },
+      "stage": "F0"
+    },
+    {
+      "when": {
+        "salt": [
+          "unknown",
+          "unusable"
+        ]
+      },
+      "review": "先定量实际可递送的盐，核对暗置损失并检查有同骨架一级对照的改环前体。原盐不可投足时铁端记为不可评价。"
+    },
+    {
+      "when": {
+        "target": "uncertain"
+      },
+      "review": "补独立日配对或改进定量限，保留原始区间。"
+    },
+    {
+      "when": {
+        "target": "works",
+        "heldout": "unknown"
+      },
+      "review": "暂停开发新配体，在未参与选择的一种真实底物或条件上冻结预测并同批验证。"
+    },
+    {
+      "when": {
+        "target": "works",
+        "heldout": "fail"
+      },
+      "review": "限定结论到已验证底物，记录留出失败的适用边界。"
+    },
+    {
+      "when": {
+        "target": "works",
+        "heldout": "pass"
+      },
+      "review": "整理同批对照、独立验证与不确定度，结束这一轮。"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "target": "low",
+        "supply": "downstream"
+      },
+      "stage": "F3D"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "target": "low",
+        "supply": "rescued"
+      },
+      "stage": "F3R"
+    },
+    {
+      "when": {
+        "controls": "pass",
+        "target": "low"
+      },
+      "stage": "F2"
+    },
+    {
+      "when": {
+        "controls": "pass"
+      },
+      "stage": "F1"
+    },
+    {
+      "when": {},
+      "stage": "F0"
+    }
+  ],
+  "record_columns": [
+    "project",
+    "arm",
+    "batch",
+    "vial",
+    "time_h",
+    "light_or_headspace",
+    "salt_scaffold_or_catalyst",
+    "analyte",
+    "value",
+    "unit",
+    "method",
+    "LOD",
+    "LOQ",
+    "recovery",
+    "qc",
+    "evidence_file",
+    "note"
+  ],
+  "notes": [
+    {
+      "when": {
+        "salt": "modified_only"
+      },
+      "comparison": "；本轮仅改环系列。原三苯环的目标配对记不可评价。"
     }
   ]
 }

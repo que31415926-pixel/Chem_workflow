@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+runs/
+private/
+*.gbw
+*.hess
+*.tmp
+*.cps
+.DS_Store
+
+.ruff_cache/

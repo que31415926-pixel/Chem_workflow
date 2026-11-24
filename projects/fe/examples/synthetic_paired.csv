@@ -1,0 +1,4 @@
+independent_block,target_lo_pct,target_hi_pct,ref_lo_pct,ref_hi_pct,qc
+synthetic_day1,0,2,61,61,pass
+synthetic_day2,3,3,62,62,pass
+synthetic_day3,4,4,58,58,pass

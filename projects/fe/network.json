@@ -1,0 +1,272 @@
+{
+  "project": "fe",
+  "end_h": 24,
+  "times_h": [
+    0,
+    0.25,
+    1,
+    2,
+    6,
+    12,
+    24
+  ],
+  "initial_M": {
+    "Salt": 0.075,
+    "Acid": 0.05,
+    "Fe": 0.0025,
+    "Bz": 0,
+    "T": 0,
+    "FeBz": 0,
+    "P": 0,
+    "BB": 0,
+    "TT": 0,
+    "Bside": 0,
+    "Tside": 0,
+    "Sloss": 0
+  },
+  "species_labels": {
+    "Salt": "Effective benzylic pyridinium cation",
+    "Acid": "Tertiary radical precursor (pivalic acid)",
+    "Fe": "Available Fe(II)-OEP pool",
+    "Bz": "Secondary benzylic radical",
+    "T": "tert-Butyl radical",
+    "FeBz": "Fe-benzyl pool",
+    "P": "Cross-coupled product (all routes)",
+    "BB": "Benzyl dimer",
+    "TT": "tert-Butyl dimer",
+    "Bside": "Benzyl side-product equivalents",
+    "Tside": "tert-Butyl side-product equivalents",
+    "Sloss": "Benzyl equivalents lost before productive activation"
+  },
+  "conserved": {
+    "benzyl": {
+      "Salt": 1,
+      "Bz": 1,
+      "FeBz": 1,
+      "P": 1,
+      "BB": 2,
+      "Bside": 1,
+      "Sloss": 1
+    },
+    "tert_alkyl": {
+      "Acid": 1,
+      "T": 1,
+      "P": 1,
+      "TT": 2,
+      "Tside": 1
+    },
+    "iron": {
+      "Fe": 1,
+      "FeBz": 1
+    }
+  },
+  "reactions": [
+    {
+      "id": "supply_B",
+      "lhs": {
+        "Salt": 1
+      },
+      "rhs": {
+        "Bz": 1
+      },
+      "k": 0.2
+    },
+    {
+      "id": "salt_loss",
+      "lhs": {
+        "Salt": 1
+      },
+      "rhs": {
+        "Sloss": 1
+      },
+      "k": 0.015
+    },
+    {
+      "id": "supply_T",
+      "lhs": {
+        "Acid": 1
+      },
+      "rhs": {
+        "T": 1
+      },
+      "k": 0.18
+    },
+    {
+      "id": "capture",
+      "lhs": {
+        "Fe": 1,
+        "Bz": 1
+      },
+      "rhs": {
+        "FeBz": 1
+      },
+      "k": 100000
+    },
+    {
+      "id": "dissociate",
+      "lhs": {
+        "FeBz": 1
+      },
+      "rhs": {
+        "Fe": 1,
+        "Bz": 1
+      },
+      "k": 0.8
+    },
+    {
+      "id": "photolysis",
+      "lhs": {
+        "FeBz": 1
+      },
+      "rhs": {
+        "Fe": 1,
+        "Bz": 1
+      },
+      "k": 0.05
+    },
+    {
+      "id": "sh2",
+      "lhs": {
+        "FeBz": 1,
+        "T": 1
+      },
+      "rhs": {
+        "Fe": 1,
+        "P": 1
+      },
+      "k": 20000
+    },
+    {
+      "id": "free_cross",
+      "lhs": {
+        "Bz": 1,
+        "T": 1
+      },
+      "rhs": {
+        "P": 1
+      },
+      "k": 10000
+    },
+    {
+      "id": "dimer_B",
+      "lhs": {
+        "Bz": 2
+      },
+      "rhs": {
+        "BB": 1
+      },
+      "k": 20000
+    },
+    {
+      "id": "dimer_T",
+      "lhs": {
+        "T": 2
+      },
+      "rhs": {
+        "TT": 1
+      },
+      "k": 20000
+    },
+    {
+      "id": "side_B",
+      "lhs": {
+        "Bz": 1
+      },
+      "rhs": {
+        "Bside": 1
+      },
+      "k": 1
+    },
+    {
+      "id": "side_T",
+      "lhs": {
+        "T": 1
+      },
+      "rhs": {
+        "Tside": 1
+      },
+      "k": 1
+    }
+  ],
+  "hypotheses": {
+    "poor_supply": {
+      "rates": {
+        "salt_loss": 0.9,
+        "supply_B": 0.03
+      },
+      "fit": "salt_loss"
+    },
+    "slow_SH2": {
+      "rates": {
+        "sh2": 80
+      },
+      "fit": "sh2"
+    },
+    "short_FeC": {
+      "rates": {
+        "dissociate": 120
+      },
+      "fit": "dissociate"
+    }
+  },
+  "conditions": {
+    "base": {},
+    "no_Fe": {
+      "initial_M": {
+        "Fe": 0
+      },
+      "rate_factors": {
+        "supply_B": 1.25,
+        "supply_T": 1.25
+      }
+    },
+    "bypass": {
+      "rate_factors": {
+        "salt_loss": 0
+      },
+      "rate_values": {
+        "supply_B": 0.2
+      }
+    },
+    "dark": {
+      "rate_factors": {
+        "supply_B": 0,
+        "supply_T": 0,
+        "photolysis": 0
+      }
+    }
+  },
+  "panels": [
+    {
+      "condition": "bypass",
+      "observable": "P",
+      "time_h": 24,
+      "sd_M": 0.0015
+    },
+    {
+      "condition": "bypass",
+      "observable": "BB",
+      "time_h": 6,
+      "sd_M": 0.0005
+    },
+    {
+      "condition": "no_Fe",
+      "observable": "P",
+      "time_h": 24,
+      "sd_M": 0.0015
+    },
+    {
+      "condition": "no_Fe",
+      "observable": "BB",
+      "time_h": 6,
+      "sd_M": 0.0005
+    },
+    {
+      "condition": "dark",
+      "observable": "Salt",
+      "time_h": 2,
+      "sd_M": 0.001
+    }
+  ],
+  "status": "Illustrative; effective photochemical rates are conditional on flux, vial and absorption. no_Fe uses an illustrative inner-filter change, not a measurement."
+}

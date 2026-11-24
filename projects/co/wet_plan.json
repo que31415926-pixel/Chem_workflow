@@ -1,0 +1,132 @@
+{
+  "fields": {
+    "controls": [
+      "pass",
+      "fail"
+    ],
+    "parent": [
+      "meets",
+      "shortfall",
+      "uncertain"
+    ],
+    "balance": [
+      "pass",
+      "fail"
+    ],
+    "signal": [
+      "H2",
+      "C4",
+      "CH",
+      "ambiguous"
+    ],
+    "heldout": [
+      "pass",
+      "fail"
+    ]
+  },
+  "stages": [
+    {
+      "id": "C0",
+      "when": {},
+      "question": "先确认母体、标品和方法能工作。",
+      "rows": [
+        {
+          "arm": "发表的母体/含受体阳性",
+          "readout": "按原文配方测 4-Bpin；核对3,5-Me₂、N-iPr前体及钴实称量",
+          "comparison": "Shimozono Scheme 8及SI S18；独立标准、基质回收、H₂校准；核对原文载量口径"
+        }
+      ]
+    },
+    {
+      "id": "C1",
+      "when": {
+        "controls": "pass"
+      },
+      "question": "在目标条件下，现成的催化剂能否满足要求？",
+      "rows": [
+        {
+          "arm": "校正母体 CoMe",
+          "readout": "游离藜芦醚、1.2 eq HBpin、50 °C、48 h；早期/终点产物、区域比、H₂、硼收支",
+          "comparison": "同日同规模；统一总钴、液气体积、反应器"
+        },
+        {
+          "arm": "已知 Et 类催化剂（可取得时）",
+          "readout": "同上；注明单/双核与活化差异",
+          "comparison": "同一目标条件母体；按钴原子数比较"
+        },
+        {
+          "arm": "无钴空白",
+          "readout": "产物、H₂、B₂pin₂及回收",
+          "comparison": "识别非催化产气与硼副反应"
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass"
+      },
+      "question": "用一项配对干预区分当前最难区分的解释。",
+      "rows": [
+        {
+          "arm": "从 diagnostics.csv 选一项可实施的配对干预",
+          "readout": "针对模型分歧选择顶空/氢分压、Ar-H/Ar-D初速或钴物种/重启；记录基线与干预",
+          "comparison": "模型分数仅作比较；控制稀释、气液转移、搅拌、溶剂损失及光谱可辨性"
+        }
+      ]
+    },
+    {
+      "id": "C3H",
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass",
+        "signal": "H2"
+      },
+      "question": "判明已知母体能否靠条件改善处理氢抑制。",
+      "rows": [
+        {
+          "arm": "母体＋经验证的氢分压扰动",
+          "readout": "同批测产物、氢收支和压力；同时测初速与终点",
+          "comparison": "先验证条件改进；仍有可重复缺口时才比较CH₂间隔臂候选"
+        }
+      ]
+    },
+    {
+      "id": "C3C4",
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass",
+        "signal": "C4"
+      },
+      "question": "验证 C4 加成是否造成可持续失活。",
+      "rows": [
+        {
+          "arm": "母体/一个C4取代候选",
+          "readout": "同批测C4物种、恢复活性与产物",
+          "comparison": "同一3,5-Me₂背景、对照配体及留出芳醚"
+        }
+      ]
+    },
+    {
+      "id": "C3CH",
+      "when": {
+        "controls": "pass",
+        "parent": "shortfall",
+        "balance": "pass",
+        "signal": "CH"
+      },
+      "question": "检验 C–H 活化是否对目标产物通量有影响。",
+      "rows": [
+        {
+          "arm": "同批芳烃/氘代芳烃与初速",
+          "readout": "初期多个时间点、氘交换、产物及钴物种",
+          "comparison": "同时检查可逆交换和底物电子效应；不单凭一个KIE定限速"
+        }
+      ]
+    }
+  ]
+}

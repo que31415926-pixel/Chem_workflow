@@ -1,0 +1,251 @@
+{
+  "project": "co",
+  "end_h": 48,
+  "times_h": [
+    0,
+    1,
+    4,
+    8,
+    24,
+    48
+  ],
+  "initial_M": {
+    "ArH": 0.5,
+    "HB": 0.6,
+    "F": 0.02,
+    "FB": 0,
+    "HH": 0,
+    "D": 0,
+    "P": 0,
+    "Haq": 0,
+    "Hgas": 0,
+    "B2": 0
+  },
+  "species_labels": {
+    "ArH": "Free veratrole",
+    "HB": "HBpin",
+    "F": "Available Co pool",
+    "FB": "Formal HB-bound Co pool",
+    "HH": "Hydrogen-loaded Co pool, two transferable H equivalents",
+    "D": "Off-cycle hydrogen-loaded Co pool",
+    "P": "Target aryl Bpin",
+    "Haq": "Dissolved H2",
+    "Hgas": "Headspace H2 / liquid volume",
+    "B2": "B2pin2"
+  },
+  "conserved": {
+    "arene": {
+      "ArH": 1,
+      "P": 1
+    },
+    "cobalt": {
+      "F": 1,
+      "FB": 1,
+      "HH": 1,
+      "D": 1
+    },
+    "boron": {
+      "HB": 1,
+      "FB": 1,
+      "P": 1,
+      "B2": 2
+    },
+    "labile_H_equivalents": {
+      "ArH": 1,
+      "HB": 1,
+      "FB": 1,
+      "HH": 2,
+      "D": 2,
+      "Haq": 2,
+      "Hgas": 2
+    }
+  },
+  "reactions": [
+    {
+      "id": "bind",
+      "lhs": {
+        "F": 1,
+        "HB": 1
+      },
+      "rhs": {
+        "FB": 1
+      },
+      "k": 4
+    },
+    {
+      "id": "unbind",
+      "lhs": {
+        "FB": 1
+      },
+      "rhs": {
+        "F": 1,
+        "HB": 1
+      },
+      "k": 0.15
+    },
+    {
+      "id": "form",
+      "lhs": {
+        "FB": 1,
+        "ArH": 1
+      },
+      "rhs": {
+        "HH": 1,
+        "P": 1
+      },
+      "k": 2
+    },
+    {
+      "id": "back",
+      "lhs": {
+        "HH": 1,
+        "P": 1
+      },
+      "rhs": {
+        "FB": 1,
+        "ArH": 1
+      },
+      "k": 0.05
+    },
+    {
+      "id": "release",
+      "lhs": {
+        "HH": 1
+      },
+      "rhs": {
+        "F": 1,
+        "Haq": 1
+      },
+      "k": 1
+    },
+    {
+      "id": "reload",
+      "lhs": {
+        "F": 1,
+        "Haq": 1
+      },
+      "rhs": {
+        "HH": 1
+      },
+      "k": 10
+    },
+    {
+      "id": "trap",
+      "lhs": {
+        "HH": 1
+      },
+      "rhs": {
+        "D": 1
+      },
+      "k": 0.01
+    },
+    {
+      "id": "recover",
+      "lhs": {
+        "D": 1
+      },
+      "rhs": {
+        "HH": 1
+      },
+      "k": 0.005
+    },
+    {
+      "id": "outgas",
+      "lhs": {
+        "Haq": 1
+      },
+      "rhs": {
+        "Hgas": 1
+      },
+      "k": 1.8
+    },
+    {
+      "id": "ingas",
+      "lhs": {
+        "Hgas": 1
+      },
+      "rhs": {
+        "Haq": 1
+      },
+      "k": 0.04
+    },
+    {
+      "id": "background",
+      "lhs": {
+        "HB": 2
+      },
+      "rhs": {
+        "B2": 1,
+        "Haq": 1
+      },
+      "k": 0.0005
+    }
+  ],
+  "hypotheses": {
+    "slow_CH": {
+      "rates": {
+        "form": 0.1
+      },
+      "fit": "form"
+    },
+    "hydrogen_limited": {
+      "rates": {
+        "release": 0.09,
+        "reload": 160
+      },
+      "fit": "release"
+    },
+    "offcycle": {
+      "rates": {
+        "trap": 0.95,
+        "recover": 0.001
+      },
+      "fit": "trap"
+    }
+  },
+  "conditions": {
+    "base": {},
+    "headspace": {
+      "rate_factors": {
+        "ingas": 0.2
+      }
+    },
+    "arene_D": {
+      "rate_factors": {
+        "form": 0.33
+      }
+    },
+    "blank": {
+      "initial_M": {
+        "F": 0
+      }
+    }
+  },
+  "panels": [
+    {
+      "condition": "headspace",
+      "observable": "P",
+      "time_h": 24,
+      "sd_M": 0.003
+    },
+    {
+      "condition": "arene_D",
+      "observable": "P",
+      "time_h": 8,
+      "sd_M": 0.002
+    },
+    {
+      "condition": "headspace",
+      "observable": "Hgas",
+      "time_h": 24,
+      "sd_M": 0.003
+    },
+    {
+      "condition": "arene_D",
+      "observable": "D",
+      "time_h": 24,
+      "sd_M": 0.002
+    }
+  ],
+  "status": "Illustrative lumped model only. Molar concentrations, per hour; rates use concentration-order-dependent units."
+}

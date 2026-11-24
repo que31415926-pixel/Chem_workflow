@@ -1,0 +1,208 @@
+{
+  "pivalic_acid": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "特戊酸；中性酸，活化态及阴离子需另行建模"
+  },
+  "product": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "目标 PhCH(Me)C(Me)3"
+  },
+  "triphenylpyridine": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "原环盐裂解后的中性吡啶"
+  },
+  "benzyl_rad": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "一级苄基"
+  },
+  "sec_benzyl_rad": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "二级 1-苯乙基"
+  },
+  "tert_butyl_rad": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "叔丁基"
+  },
+  "salt_primary": {
+    "charge": 1,
+    "multiplicities": [
+      1
+    ],
+    "note": "孤立阳离子，原环或2-iPr改环；离子对另建"
+  },
+  "salt_primary_red": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "接受一电子后中性自由基；以阳离子构型作起猜，优化后检验 C–N",
+    "seed": "salt_primary"
+  },
+  "salt_secondary": {
+    "charge": 1,
+    "multiplicities": [
+      1
+    ],
+    "note": "孤立阳离子，原环或2-iPr改环；离子对另建"
+  },
+  "salt_secondary_red": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "接受一电子后中性自由基；以阳离子构型作起猜，优化后检验 C–N",
+    "seed": "salt_secondary"
+  },
+  "salt_mod_primary": {
+    "charge": 1,
+    "multiplicities": [
+      1
+    ],
+    "note": "孤立阳离子，原环或2-iPr改环；离子对另建"
+  },
+  "salt_mod_primary_red": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "接受一电子后中性自由基；以阳离子构型作起猜，优化后检验 C–N",
+    "seed": "salt_mod_primary"
+  },
+  "salt_mod_secondary": {
+    "charge": 1,
+    "multiplicities": [
+      1
+    ],
+    "note": "孤立阳离子，原环或2-iPr改环；离子对另建"
+  },
+  "salt_mod_secondary_red": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "接受一电子后中性自由基；以阳离子构型作起猜，优化后检验 C–N",
+    "seed": "salt_mod_secondary"
+  },
+  "fe_oep": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3,
+      5
+    ],
+    "note": "无轴配体 FeII"
+  },
+  "fe_oep_cl": {
+    "charge": 0,
+    "multiplicities": [
+      6,
+      4,
+      2
+    ],
+    "note": "氯代 FeIII 预催化剂"
+  },
+  "fe_bn": {
+    "charge": 0,
+    "multiplicities": [
+      2,
+      4,
+      6
+    ],
+    "note": "一级苄基 FeIII 候选"
+  },
+  "fe_sec_bn": {
+    "charge": 0,
+    "multiplicities": [
+      2,
+      4,
+      6
+    ],
+    "note": "二级苄基 FeIII 候选"
+  },
+  "sh2_sec": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3,
+      5,
+      7
+    ],
+    "note": "二级苄基铁与叔丁基自由基的总体系；多自旋/破缺对称态须复核"
+  },
+  "sh2_pri": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3,
+      5,
+      7
+    ],
+    "note": "一级苄基铁与叔丁基自由基的总体系；分离片段初猜"
+  },
+  "fe_methyl": {
+    "charge": 0,
+    "multiplicities": [
+      2,
+      4,
+      6
+    ],
+    "note": "同 OEP 苯中热均裂参照；基态解离能与实测活化焓要区分"
+  },
+  "methyl_rad": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "文献热均裂系列的自由基片段"
+  },
+  "fe_ethyl": {
+    "charge": 0,
+    "multiplicities": [
+      2,
+      4,
+      6
+    ],
+    "note": "同 OEP 苯中热均裂参照；基态解离能与实测活化焓要区分"
+  },
+  "ethyl_rad": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "文献热均裂系列的自由基片段"
+  },
+  "fe_neopentyl": {
+    "charge": 0,
+    "multiplicities": [
+      2,
+      4,
+      6
+    ],
+    "note": "同 OEP 苯中热均裂参照；基态解离能与实测活化焓要区分"
+  },
+  "neopentyl_rad": {
+    "charge": 0,
+    "multiplicities": [
+      2
+    ],
+    "note": "文献热均裂系列的自由基片段"
+  }
+}

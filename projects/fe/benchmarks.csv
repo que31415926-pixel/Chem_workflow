@@ -1,0 +1,8 @@
+id,observable,measured_or_reported,unit,medium,role,source
+F_Me,Fe-C_homolysis_activation_enthalpy,23,kcal/mol,benzene,甲基；仅可与同反应的活化焓比；不能按BDE或活化自由能核对,https://doi.org/10.1016/0020-1693(95)04887-1
+F_Et,Fe-C_homolysis_activation_enthalpy,19,kcal/mol,benzene,乙基；同系列,https://doi.org/10.1016/0020-1693(95)04887-1
+F_Np,Fe-C_homolysis_activation_enthalpy,17,kcal/mol,benzene,新戊基Fe-CH2CMe3；非叔丁基,https://doi.org/10.1016/0020-1693(95)04887-1
+F10,target_assay,0,percent_UPLC_reported,alcohol_protocol_B,对氯二级苄基＋N-Boc哌啶醇；未给检出限；已用于提问不能作盲验,https://doi.org/10.1021/jacs.6c04676.s001
+F_POS,compound_1_isolated,84,percent_isolated,acid_protocol_A,其他底物阳性 S60及S63；不可按分析收率拟合,https://doi.org/10.1021/jacs.6c04676.s001
+F_Gould,nearby_assay,15,percent_assay_estimated,benzyl_bromide_alcohol,前体和取代不同；近似响应因子；仅迁移参照,https://doi.org/10.1021/jacs.3c05405.s001
+F_TARGET,PhCHMe_CMe3_yield,,percent_calibrated,acid_protocol_A_pivalic_acid,特定二级盐和酸；没有已核实目标标签,

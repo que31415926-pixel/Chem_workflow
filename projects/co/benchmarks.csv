@@ -1,0 +1,8 @@
+id,observable,measured_or_reported,unit,medium,role,source
+C_TS_MORPH,p_TS1_minus_m_TS1_G,1.370,kcal/mol,benzene_SP_on_gas_geometries,文献计算交叉复算；N-苯基吗啉；不与实测等同,https://doi.org/10.1021/jacs.5c05965.s001
+C_TS_ESTER,p_TS3_minus_m_TS3_G,-1.354,kcal/mol,benzene_SP_on_gas_geometries,同文另一个底物；保留为符号和数量级核对,https://doi.org/10.1021/jacs.5c05965.s001
+C_S4_0,veratrole_borylation,22,percent_NMR,23C_B2pin2_3eq_No_additive,已测边界；不是目标无受体HBpin的产率,https://doi.org/10.1021/jacs.5c05965
+C_S4_HB,veratrole_borylation,2,percent_NMR,23C_B2pin2_3eq_HBpin_1eq,加HBpin抑制；同一Scheme4A,https://doi.org/10.1021/jacs.5c05965
+C_S4_TBE,veratrole_borylation,92,percent_NMR,23C_B2pin2_3eq_TBE_2.5eq,受体阳性；同一Scheme4A,https://doi.org/10.1021/jacs.5c05965
+C_S8,veratrole_borylation,48,percent_NMR,23C_HBpin_2.5eq_alkenylBpin_2.5eq,含受体配方Scheme8,https://doi.org/10.1021/jacs.5c05965
+C_TARGET,target_yield,,percent_calibrated,50C_THF_HBpin_only,尚待同条件实测,

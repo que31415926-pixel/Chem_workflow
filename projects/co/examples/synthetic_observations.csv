@@ -1,0 +1,13 @@
+split,batch,condition,time_h,species,value_M,sigma_M,kind,origin
+train,synthetic_01,base,4,P,0.00529048,0.001,value,synthetic_fixture
+train,synthetic_01,base,4,ArH,0.49470952,0.001,value,synthetic_fixture
+train,synthetic_01,base,24,P,0.03261303,0.001,value,synthetic_fixture
+train,synthetic_01,base,24,ArH,0.46738697,0.001,value,synthetic_fixture
+train,synthetic_01,base,48,P,0.06296984,0.001,value,synthetic_fixture
+train,synthetic_01,base,48,ArH,0.43703016,0.001,value,synthetic_fixture
+holdout,synthetic_01,headspace,4,P,0.00529051,0.001,value,synthetic_fixture
+holdout,synthetic_01,headspace,4,ArH,0.49470949,0.001,value,synthetic_fixture
+holdout,synthetic_01,headspace,24,P,0.03261999,0.001,value,synthetic_fixture
+holdout,synthetic_01,headspace,24,ArH,0.46738001,0.001,value,synthetic_fixture
+holdout,synthetic_01,headspace,48,P,0.0630025,0.001,value,synthetic_fixture
+holdout,synthetic_01,headspace,48,ArH,0.4369975,0.001,value,synthetic_fixture

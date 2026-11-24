@@ -1,0 +1,117 @@
+{
+  "fields": {
+    "controls": [
+      "pass",
+      "fail"
+    ],
+    "salt": [
+      "original",
+      "modified_only",
+      "unusable"
+    ],
+    "target": [
+      "works",
+      "low",
+      "uncertain"
+    ],
+    "supply": [
+      "rescued",
+      "downstream",
+      "ambiguous"
+    ],
+    "heldout": [
+      "pass",
+      "fail"
+    ]
+  },
+  "stages": [
+    {
+      "id": "F0",
+      "when": {},
+      "question": "先确认实际投进去的盐和能复现的阳性。",
+      "rows": [
+        {
+          "arm": "原环一级/二级；改环备用",
+          "readout": "制备后、开灯前、真实基质暗置；qNMR/校准LC 有效浓度和分解物",
+          "comparison": "改环时保留同环一级对照；标准品、基质回收及LOQ"
+        },
+        {
+          "arm": "酸程序A已知阳性",
+          "readout": "用已发表产物1检验光路和分析；记录真实光路/液温",
+          "comparison": "原文S60/S63；S1有铁无铁优化组是另一个配对"
+        }
+      ]
+    },
+    {
+      "id": "F1",
+      "when": {
+        "controls": "pass"
+      },
+      "question": "先测最直接的酸法配对。",
+      "rows": [
+        {
+          "arm": "同环一级＋特戊酸，有铁",
+          "readout": "产物标准、早期/24 h、两端副产物、有效盐量",
+          "comparison": "与同日同光路二级比较"
+        },
+        {
+          "arm": "同环二级＋特戊酸，有铁",
+          "readout": "身份与校准收率、两端碳收支",
+          "comparison": "与一级比较；无氯1-苯乙基生成目标"
+        },
+        {
+          "arm": "同环二级＋特戊酸，无铁",
+          "readout": "产物、自由基旁产物及吸光差异",
+          "comparison": "背景有产物时不直接当作铁路线占比；一级无铁按需要配对"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "when": {
+        "controls": "pass",
+        "target": "low"
+      },
+      "question": "确认低效能否在绕开盐时改善。",
+      "rows": [
+        {
+          "arm": "同一苄基片段的独立来源＋相同三级片段",
+          "readout": "校准有效供给与光学条件；测早期目标及二聚物、气液副产物",
+          "comparison": "参考一级铁实验证据；供给无法比较时暂缓铁端归因"
+        }
+      ]
+    },
+    {
+      "id": "F3R",
+      "when": {
+        "controls": "pass",
+        "target": "low",
+        "supply": "rescued"
+      },
+      "question": "前体优先，验证恢复是否可重复。",
+      "rows": [
+        {
+          "arm": "原盐与改环盐配对（两者均可定量时）",
+          "readout": "同批一级与二级；盐时间程与目标/副产物",
+          "comparison": "在第二个真实底物或不同三级酸留出验证"
+        }
+      ]
+    },
+    {
+      "id": "F3D",
+      "when": {
+        "controls": "pass",
+        "target": "low",
+        "supply": "downstream"
+      },
+      "question": "区分铁捕获、Fe–C 寿命与后续取代。",
+      "rows": [
+        {
+          "arm": "可表征的一级/二级烷基铁＋同一三级自由基源",
+          "readout": "铁物种、目标、旁产时间程；有光/无光与背景",
+          "comparison": "仅在检测限和供给可比时解释；先简单铁卟啉对照，再决定合成新配体"
+        }
+      ]
+    }
+  ]
+}

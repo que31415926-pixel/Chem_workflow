@@ -1,0 +1,122 @@
+{
+  "veratrole": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "游离藜芦醚"
+  },
+  "hbpin": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "HBpin"
+  },
+  "aryl_bpin": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "4-硼化主产物"
+  },
+  "hydrogen": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "note": "H2；模型内溶液参考态，不同于实际气相标准态"
+  },
+  "co_h": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3
+    ],
+    "note": "母体 CoH 候选"
+  },
+  "co_bpin": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3
+    ],
+    "note": "母体 CoBpin 候选"
+  },
+  "co_me": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3
+    ],
+    "note": "3,5-Me2 / 4-H / 外侧 N-iPr 母体 CoMe"
+  },
+  "co_bpin_ar": {
+    "charge": 0,
+    "multiplicities": [
+      1,
+      3
+    ],
+    "note": "CoBpin 与游离藜芦醚，分离片段；需要另外构建位点特异性反应复合物"
+  },
+  "ref_p_ts3": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "composition": {
+      "C": 33,
+      "H": 45,
+      "Co": 1,
+      "N": 5,
+      "B": 1,
+      "O": 4
+    },
+    "note": "外部文献坐标；Shimozono SI S31–37。用 tools/import_co_reference.py 导入"
+  },
+  "ref_m_ts3": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "composition": {
+      "C": 33,
+      "H": 45,
+      "Co": 1,
+      "N": 5,
+      "B": 1,
+      "O": 4
+    },
+    "note": "外部文献坐标；Shimozono SI S31–37。用 tools/import_co_reference.py 导入"
+  },
+  "ref_p_ts1": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "composition": {
+      "C": 35,
+      "H": 50,
+      "Co": 1,
+      "N": 6,
+      "B": 1,
+      "O": 3
+    },
+    "note": "外部文献坐标；Shimozono SI S31–37。用 tools/import_co_reference.py 导入"
+  },
+  "ref_m_ts1": {
+    "charge": 0,
+    "multiplicities": [
+      1
+    ],
+    "composition": {
+      "C": 35,
+      "H": 50,
+      "Co": 1,
+      "N": 6,
+      "B": 1,
+      "O": 3
+    },
+    "note": "外部文献坐标；Shimozono SI S31–37。用 tools/import_co_reference.py 导入"
+  }
+}

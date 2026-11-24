@@ -1,0 +1,9 @@
+{
+  "reactants": {
+    "jobs/co_bpin": 1,
+    "jobs/veratrole": 1
+  },
+  "products": {
+    "jobs/co_bpin_ar": 1
+  }
+}

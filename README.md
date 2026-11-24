@@ -1,62 +1,102 @@
-# 可复用的催化计算与实验工作流
+# ChemFlow
 
-仓库自带钴硼化与铁偶联两个研究预设。要换课题，先用 `init` 生成项目，再修改该目录下的配置、结构和数据。[新项目配置与可运行示例](docs/reuse.md)
+面向催化研究的可复用计算与实验工作流，连接分子建模、量子化学、反应动力学、数据分析与实验决策。
 
-```bash
-python -m chemflow init my_reaction
-python -m chemflow validate my_reaction
-python -m chemflow run my_reaction --out runs/my_reaction
-```
+通过 JSON 配置定义研究课题、计算步骤及实验判断规则，无需为每个新反应重新编写整套流程。
 
-命令在安装依赖后运行。
+## 快速开始
 
-
-把有限的合作实验优先放在会改变研究决策的对照上。钴项目关注游离藜芦醚在 HBpin 单一外加硼源、无烯烃受体时能否周转。铁项目关注二级苄基盐和特戊酸的偶联能否发生，以及低效源于前体损失、铁端过程还是竞争反应。
-
-| 任务 | 入口 | 结果 |
-|---|---|---|
-| 先走一遍，不需商业软件或集群 | `python -m chemflow demo --out runs/first` | 原始两个预设生成两套 ORCA 输入、24 个 SBML 及实验清单；添加项目后 demo 会运行所有已发现的项目，包括显式配置的外部计算。只运行指定课题时用 run |
-| 计算具体结构 | [量子化学操作](docs/quantum.md) | 构象、不同自旋的输入、计算结果检查、配平反应的自由能 |
-| 由实测选择下一次合作实验 | [数据接入与实验决策](docs/data.md) | 守恒检查、留出条件的模型比较、配对区间、下一批实验 CSV |
-| 确定做哪条支路 | [钴项目](projects/co/README.md) · [铁项目](projects/fe/README.md) | 各自的阳性、条件、关键观测、前进或停止条件 |
-| 核对哪些内容已运行 | [交付核验](docs/verification.md) | 实跑软件版本、验证范围及待办 |
-
-## 第一次运行
-
-在解压后的目录打开终端，目录中应能看到本文件和 `chemflow`。推荐 Python 3.12。只跑示例、数据分析和输入生成时，Windows PowerShell 可用下面四行：
-
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m chemflow doctor
-.\.venv\Scripts\python.exe -m chemflow demo --out runs/first
-```
-
-Linux、macOS 或 WSL 可用：
+推荐 Python 3.12。在仓库根目录运行：
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
+git clone https://github.com/que31415926-pixel/Chem_workflow.git
+cd Chem_workflow
 python -m pip install -r requirements.txt
+python -m chemflow doctor
 python -m chemflow demo --out runs/first
 ```
 
-有 conda/mamba 的 Linux 或 WSL 用户也可以使用下列环境，一并安装 CREST、xTB 和重建几何所需的 RDKit。脚本随包附带起始 XYZ，常规使用无需重新生成。安装 ORCA 后再运行量子化学任务。COPASI 图形界面按需另装。
+建议在虚拟环境中安装依赖。Windows 如使用 `py -3.12`，可将上述 `python` 替换为 `py -3.12`。
+
+默认依赖为 NumPy、SciPy 和 python-libSBML。内置两个课题的演示无需 ORCA、CREST 或集群，生成 ORCA 输入、动力学轨迹、24 个 SBML 模型及实验清单。新增课题后，`demo` 会执行所有已发现课题的配置步骤，包括已启用的外部计算。
+
+需要 RDKit、CREST 和 xTB 时，Linux / WSL 用户可使用：
 
 ```bash
 conda env create -f environment.yml
 conda activate catalysis-workflows
 python -m chemflow doctor
-python -m chemflow demo --out runs/conda-first
 ```
 
-无需安装即可查看 [钴项目首批清单](projects/co/first_batch.csv) 和 [铁项目首批清单](projects/fe/first_batch.csv)。运行后打开 `runs/first/co/wet/next_batch.csv` 与 `runs/first/fe/wet/next_batch.csv`。两份表默认只显示核实母体/前体、分析方法和阳性的第一步。打开任一项目的 `scenarios/diagnostics.csv`，可见同一干预对不同假说产生的预测差异。**起始速率和噪声是假设值。这些数只能演示怎样做决策，不能写成研究结果。** `projects/*/benchmarks.csv` 单独保存有出处的文献记录。两项目的目标收率均留空。
+实际 DFT 计算需要另外安装获授权的 ORCA。
 
-在 COPASI 用 **File → Import SBML** 打开 `scenarios/*.xml`，进入 **Tasks → Time Course**，把 Duration 设为钴 48、铁 24，时间单位为小时，然后运行。CSV 中的浓度为 mol/L。图形界面与 Python 使用同一模型定义。实际验证过的跨软件对照见交付核验。
+## 研究项目
 
-## 如何上传 GitHub
+| 项目 | 研究问题 | 入口 |
+| --- | --- | --- |
+| Co | 钴催化游离藜芦醚脱氢硼化 | [项目说明](projects/co/README.md) · [首批实验](projects/co/first_batch.csv) |
+| Fe | 铁催化二级苄基与三级烷基偶联 | [项目说明](projects/fe/README.md) · [首批实验](projects/fe/first_batch.csv) |
 
-以本文件所在目录作为仓库根目录，上传解压后的源码和项目文件即可。项目包含自建起始结构、两个实跑的有机底物构象集合、示例数据以及文献/软件链接。个人计算输出放 `runs/`，未公开的合作资料放 `private/`，两者已列入 `.gitignore`。压缩包不附 ORCA 二进制、商业许可证或期刊全文。代码许可由仓库所有者自行决定。
+只运行指定项目：
 
-软件入口在 [CREST](https://crest-lab.github.io/crest-docs/)、[xTB](https://xtb-docs.readthedocs.io/)、[ORCA](https://www.faccts.de/docs/orca/6.1/manual/) 和 [COPASI](https://copasi.org/Support/User_Manual/Importing_and_Exporting/Importing_and_Exporting_SBML_Files/)。
+```bash
+python -m chemflow validate co
+python -m chemflow run co --out runs/co
+```
 
+运行结果位于 `runs/` 下。默认演示的速率与观测值是示例假设或合成数据，并非实测研究结论；文献基准单独记录在各项目的 `benchmarks.csv`。
+
+## 创建新课题
+
+```bash
+python -m chemflow init my_reaction
+python -m chemflow plan my_reaction
+python -m chemflow validate my_reaction
+python -m chemflow run my_reaction --out runs/my_reaction
+```
+
+`init` 从独立的教学模板创建项目，也可使用 `init my_reaction --from co` 复用已有项目。修改项目目录中的配置、分子结构和数据即可。每次运行请指定尚不存在的输出目录。
+
+详见 [新课题配置与工作流复用](docs/reuse.md)。
+
+## 仓库结构
+
+```text
+chemflow/           通用计算与实验决策引擎
+projects/
+  co/               钴催化研究
+  fe/               铁催化研究
+templates/starter/  新课题模板
+docs/               使用指南与验证记录
+tests/              回归测试
+tools/              结构重建、文献坐标导入与独立复核
+requirements.txt    基础 Python 依赖
+environment.yml     含构象搜索工具的 Conda 环境
+```
+
+计算输出放在 `runs/`，未公开合作资料放在 `private/`，均已加入 `.gitignore`。
+
+## 使用指南
+
+| 文档 | 内容 |
+| --- | --- |
+| [量子化学](docs/quantum.md) | 分子结构、构象、自旋、ORCA 计算及自由能 |
+| [数据与实验决策](docs/data.md) | 数据格式、动力学拟合、物料衡算与实验交接 |
+| [新课题配置](docs/reuse.md) | 项目配置、步骤组合与中间结果传递 |
+| [验证记录](docs/verification.md) | 已执行测试、跨软件复核及适用边界 |
+
+查看全部命令：
+
+```bash
+python -m chemflow --help
+```
+
+## 验证
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+修正版交付记录包含 11 项回归测试、CREST 实际构象搜索和 SciPy/COPASI 数值交叉核验。ORCA 输入生成与结果审核逻辑已验证，但尚未在授权环境完成新的 DFT 计算。详见 [验证记录](docs/verification.md)。
+
+外部软件：[CREST](https://crest-lab.github.io/crest-docs/) · [xTB](https://xtb-docs.readthedocs.io/) · [ORCA](https://www.faccts.de/docs/orca/6.1/manual/) · [COPASI](https://copasi.org/)

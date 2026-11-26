@@ -18,7 +18,7 @@ python3 -m chemflow2.cloud_setup my-trial-project --region us-central1
 python3 -m chemflow2.cloud_setup my-trial-project --region us-central1 \
   --profile "$HOME/chemflow-private/cloud.json" \
   --budget-policy "$HOME/chemflow-private/budget-policy.json" \
-  --installer "$HOME/Downloads/orca_6_1_0_linux_x86-64_shared_openmpi416.run" \
+  --installer "$HOME/Downloads/orca_6_1_0_linux_x86-64_shared_openmpi418.run" \
   --calibration-plan "$HOME/chemflow-private/calibration/plan.json" \
   --byol-confirmed --apply
 ```

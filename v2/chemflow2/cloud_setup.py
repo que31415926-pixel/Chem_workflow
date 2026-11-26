@@ -20,7 +20,8 @@ APIS = ("artifactregistry", "batch", "cloudbilling", "cloudbuild", "compute", "i
 BUILD_MACHINE = "E2_HIGHCPU_8"
 BUILD_HOURS = 1
 BUILD_DISK_GB = 100
-INSTALLER_NAME = re.compile(r"orca_6_\d+_\d+_linux_x86-64_shared_openmpi416\.run")
+# Locked to the single installer in toolchain.lock.json (ORCA 6.1.0, Open MPI 4.1.8).
+INSTALLER_NAME = re.compile(r"orca_6_1_0_linux_x86-64_shared_openmpi418\.run")
 
 
 def build_allocation():
@@ -32,7 +33,7 @@ def build_allocation():
 def check_installer(installer):
     if (installer.is_symlink() or not installer.is_file() or not installer.stat().st_size
             or not INSTALLER_NAME.fullmatch(installer.name)):
-        raise ValueError("supply the licensed Linux x86-64 shared OpenMPI 4.1.6 ORCA 6 .run installer")
+        raise ValueError("supply the locked ORCA 6.1.0 installer orca_6_1_0_linux_x86-64_shared_openmpi418.run (see toolchain.lock.json)")
 
 
 def settings(project, region, policy_path):

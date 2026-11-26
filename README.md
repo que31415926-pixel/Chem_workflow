@@ -32,7 +32,7 @@ conda activate catalysis-workflows
 python -m chemflow doctor
 ```
 
-实际 DFT 计算需要另外安装获授权的 ORCA。
+实际 DFT 计算需要另外安装获授权的 ORCA **6.1.0**。下载、校验和多设备版本检查见 [docs/orca-setup.md](docs/orca-setup.md)。所有设备的版本以 [toolchain.lock.json](toolchain.lock.json) 为准。
 
 ## 研究项目
 

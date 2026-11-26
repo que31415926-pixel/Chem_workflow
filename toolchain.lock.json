@@ -1,0 +1,41 @@
+{
+  "schema": "chemflow-toolchain-lock/1",
+  "locked_on": "2026-11-26",
+  "source_of_truth": "Versions resolved by Cloud Build b1230b1b (GCP image chemflow2-byol). Every device that produces numbers for the papers must match this file; check with: python3 tools/toolchain/check_toolchain.py --orca /ABS/PATH/orca",
+  "orca": {
+    "version": "6.1.0",
+    "licence": "ORCA is free for academic use but may not be redistributed. Each user downloads it from https://orcaforum.kofo.mpg.de after registering; never commit the installer or the binaries to git.",
+    "platforms": {
+      "linux-x86_64": {
+        "installer": "orca_6_1_0_linux_x86-64_shared_openmpi418.run",
+        "installer_bytes": 583759473,
+        "installer_sha256": "3df2d25c36fe7e49f1c301b3ad6cfc9b837a370fd3cee31275a86ecd291ca944",
+        "orca_binary_sha256": "903987dbd651df922ef6a7f91763abb25e7a79531f01018f5aa49fea104f2e91",
+        "openmpi": "4.1.8"
+      },
+      "other": {
+        "rule": "macOS / other builds: download the ORCA 6.1.0 build for that platform; the binary hash differs per platform, so only the version (6.1.0) and a working 2-process MPI job are enforced. check_toolchain.py records the binary sha256 in the device receipt."
+      }
+    }
+  },
+  "openmpi": {
+    "version": "4.1.8",
+    "source_url": "https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.8.tar.bz2",
+    "container_env": {"OMPI_MCA_plm": "isolated"}
+  },
+  "images": {
+    "final_stage": "mambaorg/micromamba:2.0.5",
+    "orca_and_openmpi_build_stages": "debian:bookworm-slim"
+  },
+  "conda_forge": {
+    "python": "3.12.16",
+    "crest": "3.0.2",
+    "xtb": "6.8.0",
+    "tblite": "0.8.0",
+    "rdkit": "2026.09.2",
+    "numpy": "2.5.5",
+    "scipy": "1.18.1",
+    "python-libsbml": "5.20.5",
+    "google-cloud-storage": "3.17.2"
+  }
+}

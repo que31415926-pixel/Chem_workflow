@@ -1,0 +1,82 @@
+{
+  "scope": "engineering_calibration",
+  "name": "Water ORCA pipeline calibration",
+  "species": [
+    {
+      "id": "water",
+      "claims": [],
+      "states": [
+        {
+          "id": "neutral-singlet",
+          "charge": 0,
+          "multiplicity": 1
+        }
+      ],
+      "conformers": [
+        {
+          "id": "water-start",
+          "xyz": "water.xyz",
+          "source": "Idealized isolated water geometry in angstrom, included with this example",
+          "approved_by": "ChemFlow2 engineering example"
+        }
+      ]
+    }
+  ],
+  "methods": [
+    {
+      "id": "geom",
+      "stage": "opt",
+      "template": "geom.tpl",
+      "resources": {
+        "cores": 1,
+        "memory_mb": 1024,
+        "scratch_mb": 512
+      },
+      "requires": [
+        "orca6-native"
+      ]
+    },
+    {
+      "id": "vib",
+      "stage": "freq",
+      "template": "vib.tpl",
+      "resources": {
+        "cores": 1,
+        "memory_mb": 1024,
+        "scratch_mb": 512
+      },
+      "requires": [
+        "orca6-native"
+      ],
+      "geometry_from": "geom"
+    },
+    {
+      "id": "hf-svp",
+      "stage": "sp",
+      "template": "hf-svp.tpl",
+      "resources": {
+        "cores": 1,
+        "memory_mb": 1024,
+        "scratch_mb": 512
+      },
+      "requires": [
+        "orca6-native"
+      ],
+      "geometry_from": "geom"
+    },
+    {
+      "id": "hf-tzvp",
+      "stage": "sp",
+      "template": "hf-tzvp.tpl",
+      "resources": {
+        "cores": 1,
+        "memory_mb": 1024,
+        "scratch_mb": 512
+      },
+      "requires": [
+        "orca6-native"
+      ],
+      "geometry_from": "geom"
+    }
+  ]
+}

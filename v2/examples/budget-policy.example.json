@@ -1,0 +1,33 @@
+{
+  "project": "YOUR_PROJECT",
+  "bucket": "your-canonical-private-bucket",
+  "region": "us-central1",
+  "currency": "USD",
+  "observed_at": null,
+  "valid_until": null,
+  "provider_blocks_paid_usage": false,
+  "trial_eligibility_confirmed": false,
+  "dedicated_account": false,
+  "billing_current": false,
+  "retention_and_cleanup_reviewed": false,
+  "credit_remaining_usd": null,
+  "spend_limit_usd": null,
+  "vm_overhead_hours": null,
+  "tail_hours": null,
+  "vm_usd_per_hour": {},
+  "disk_usd_per_gb_hour": null,
+  "ancillary_upper_usd": {
+    "storage": null,
+    "image": null,
+    "logging": null,
+    "network": null,
+    "operations": null,
+    "failure": null,
+    "cleanup": null
+  },
+  "evidence": {
+    "account": {"file": "account-proof.txt", "sha256": null},
+    "tariff": {"file": "regional-rates.csv", "sha256": null},
+    "other_cost_bounds": {"file": "usage-bounds.csv", "sha256": null}
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project": "YOUR_PROJECT",
+  "region": "us-central1",
+  "bucket": "your-existing-bucket",
+  "service_account": "YOUR_BATCH_SERVICE_ACCOUNT",
+  "image": "your-registry/chemflow@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "max_hours": 24,
+  "overhead_gb": 64,
+  "node": {
+    "name": "batch",
+    "host": "controller",
+    "cores": 4,
+    "memory_mb": 32768,
+    "scratch_mb": 131072,
+    "engines": [
+      "orca",
+      "probe"
+    ],
+    "capabilities": [
+      "orca6-native"
+    ]
+  },
+  "license_slots": {
+    "orca": 1
+  },
+  "max_parallel_vms": 1,
+  "workflow_service_account": "YOUR_WORKFLOW_SERVICE_ACCOUNT",
+  "budget_policy": "budget-policy.json"
+}

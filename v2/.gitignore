@@ -1,0 +1,15 @@
+/studies/
+/protocols/
+/private/
+/vendor/chemflow-v1/projects/
+/chemflow2/claims.py
+/chemflow2/paper_catalog.py
+/chemflow2/v4_rules.py
+/chemflow2/salts.py
+*.run
+*.resources.json
+/budget-policy.json
+/chemflow-cloud.json
+/build/
+/dist/
+*.egg-info/

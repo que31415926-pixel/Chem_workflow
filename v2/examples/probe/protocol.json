@@ -1,0 +1,4 @@
+{"name":"transport-and-dependency-check","tasks":[
+  {"id":"produce","engine":"probe","stage":"probe","outputs":["sample.json"],"resources":{"cores":1,"memory_mb":32,"scratch_mb":1}},
+  {"id":"consume","engine":"probe","stage":"probe","deps":["produce"],"from_deps":{"parent.json":"produce/sample.json"},"outputs":["verified.json"],"resources":{"cores":1,"memory_mb":32,"scratch_mb":1}}
+]}

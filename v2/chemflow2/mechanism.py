@@ -275,10 +275,10 @@ def _rate(data):
 def evaluate(data):
     from . import anchor_threshold, isotopes
     from . import interval_kinetics, solution
-    from .pathway import match_endpoints
+    from .pathway import match_endpoints, pathway_gibbs
 
     functions = {'fit_anchor_threshold': anchor_threshold.evaluate, 'score_anchor_threshold': anchor_threshold.evaluate,
-                 'salt_quantity': solution.salt_quantity, 'isotope_observables': isotopes.evaluate, 'solution_cycle': solution.evaluate, 'irc_endpoints': match_endpoints,
+                 'salt_quantity': solution.salt_quantity, 'isotope_observables': isotopes.evaluate, 'solution_cycle': solution.evaluate, 'irc_endpoints': match_endpoints, 'pathway_gibbs': pathway_gibbs,
                  'interval_kinetics': interval_kinetics.evaluate, 'paired_barriers': _barriers, 'freeze_prediction': _freeze,
                  'score_holdout': _score_holdout, 'eyring': _rate}
     if not isinstance(data, dict) or data.get('operation') not in functions:

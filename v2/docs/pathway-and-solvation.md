@@ -65,3 +65,29 @@ Pass a JSON file to `python3 -m chemflow2 mechanism cycle.json`, or use an analy
 ```
 
 Gas-to-solution transfer requires the same species, spin, method, temperature and concentration standard state on both sides. Apply the experiment's gas-to-solution standard-state correction explicitly when constructing the energy records. For relative reduction potentials, provide both the target reduction and `reference: {"id":"Fc+/Fc","stoichiometry":{"reference_ox":-1,"reference_red":1}}`. Include all referenced species in the same map. The evaluator balances nuclei, infers electron counts from the formal charge change, and subtracts reference-couple free energy per electron under matching conditions. Returned bounds propagate the supplied absolute energy bounds conservatively. Inputs must already use the reviewed conformer ensembles and thermal corrections. Do not interpret these computed potentials as absolute-electrode values.
+
+### Split thermochemistry control
+
+For a separate, prospectively defined control, add `single_point` to a reviewed pathway method. Pin `engine_version`, supply reviewed `endpoint_signatures`, and specify the complete electronic method for the independent single point. Each optimized TS or IRC endpoint geometry feeds a frequency calculation and a single point. Both inherit the same starting orbitals and any requested low-level stability prerequisite. An enabled stability calculation checks its own electronic model. Review the high-level electronic state separately. The original path definition, basis, medium and convergence criteria belong in the frozen method record. Example method fields:
+
+```json
+{
+  "stage_resources": {
+    "freq": {"cores": 8, "memory_mb": 48000, "scratch_mb": 120000},
+    "sp": {"cores": 4, "memory_mb": 24000, "scratch_mb": 60000}
+  },
+  "engine_version": "6.1.0",
+  "single_point": {
+    "keywords": "PBE0 def2-TZVP TightSCF CPCM(water)",
+    "requires": ["reviewed-high-sp"],
+    "temperature_K": 298.15,
+    "pressure_atm": 1.0
+  }
+}
+```
+
+The reservations above illustrate syntax. Measure representative jobs and freeze comparable settings before selecting production resources. Stage overrides replace the entire reservation for the selected stage; other stages inherit the method reservation. `sp` also covers any stability jobs. The scheduler may serialize eligible siblings if capacity is limited.
+
+Each `*-gibbs` task checks its optimization, frequency and single-point evidence, their input deck hashes, common XYZ hash, actual ORCA version, expected saddle or minimum mode count, matching printed thermochemistry temperature and pressure, and the reviewed end structures reached from the IRC. It then adds the ORCA `G-E(el)` term to the single-point electronic energy (hartree). This yields a single-structure composite at the recorded pressure. Basis extrapolation, ensemble averaging, concentration/standard-state conversion, physical mode-direction assessment and the independent paired-barrier gate remain separate operations. Same-geometry sibling eligibility is a scheduling opportunity; report speedup only from an independently measured paired run.
+
+[ORCA thermochemistry conventions](https://www.faccts.de/docs/orca/6.1/manual/contents/structurereactivity/thermochemistry.html)

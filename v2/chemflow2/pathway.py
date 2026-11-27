@@ -51,6 +51,8 @@ def check_stationary_observations(task, obs, folder):
         obs["imaginary_modes_below_tolerance"] = sum(mode < -cutoff for mode in modes)
         if obs["imaginary_modes_below_tolerance"] != point["imaginary_count"]:
             raise Rejected("validation", "imaginary-mode count disagrees with target stationary point")
+    if "thermochemistry_condition" in task:
+        obs["thermochemistry"] = read_thermochemistry(folder / "orca.out", task["thermochemistry_condition"])
     state = task.get("state_diagnostics")
     if state is not None:
         if state.get("require_stability") is True and obs.get("wavefunction_stable") is not True:
@@ -67,24 +69,73 @@ def check_stationary_observations(task, obs, folder):
                 raise Rejected("validation", "spin-squared expectation exceeds reviewed tolerance")
 
 
-def _emit_chain(config, method, output, guess, branch):
-    resources = method["resources"]
-    _resources(resources, "method resources")
-    cores = resources["cores"]
-    maxcore = resources["memory_mb"] * 3 // (4 * cores)
-    if maxcore < 1:
-        raise ValueError("insufficient per-rank memory")
+def read_thermochemistry(log, condition):
+    """Read one complete ORCA thermochemistry block at the registered T and P."""
+    from .worker import NUMBER, Rejected, number
+
+    fields = {"temperature_K": ("Temperature", "K"), "pressure_atm": ("Pressure", "atm"),
+              "correction_eh": (r"G-E\(el\)", "Eh")}
+    blocks = []
+    with log.open(encoding="utf8", errors="replace") as stream:
+        for line in stream:
+            if re.match(r"^\s*THERMOCHEMISTRY AT\s+", line):
+                blocks.append({})
+            if not blocks:
+                continue
+            for key, (label, unit) in fields.items():
+                match = re.match(r"^\s*" + label + r"\s+\.\.\.\s*(" + NUMBER + r")\s+" + unit + r"\b", line)
+                if match:
+                    if key in blocks[-1]:
+                        raise Rejected("validation", "ambiguous thermochemistry block")
+                    blocks[-1][key] = number(match[1])
+    valid = [b for b in blocks if all(b.get(k) == condition[k] for k in ("temperature_K", "pressure_atm"))]
+    if len(valid) != 1 or set(valid[0]) != set(fields):
+        raise Rejected("validation", "missing or ambiguous thermal correction at the registered T and P")
+    return valid[0]
+
+
+def _keywords(method):
     keywords = _string(method["keywords"], "method keywords")
     if not re.fullmatch(r"[A-Za-z0-9()=+*,./_ -]+", keywords):
         raise ValueError("method keywords must be one simple ORCA keyword line")
-    if set(keywords.lower().split()) & {"opt", "optts", "irc", "freq", "numfreq", "moread", "anfreq", "scants", "neb-ts"}:
+    stages = {"opt", "tightopt", "verytightopt", "looseopt", "normalopt", "optts", "irc", "freq",
+              "numfreq", "moread", "anfreq", "scants", "neb-ts", "zoom-neb-ts"}
+    if set(keywords.lower().split()) & stages:
         raise ValueError("supply electronic method keywords separately from task stages")
-    requires = _strings(method.get("requires", []), "requires")
+    return keywords
+
+
+def _emit_chain(config, method, output, guess, branch):
+    base = method["resources"]
+    _resources(base, "method resources")
+    overrides = method.get("stage_resources", {})
+    if not isinstance(overrides, dict) or overrides.keys() - {"ts", "opt", "freq", "irc", "sp"}:
+        raise ValueError("invalid stage_resources")
+    for stage, resources in overrides.items():
+        _resources(resources, stage + " resources")
+    high = method.get("single_point")
+    if high is not None:
+        if not isinstance(high, dict) or high.keys() - {"keywords", "requires", "temperature_K", "pressure_atm"}:
+            raise ValueError("invalid single_point contract")
+        if "endpoint_signatures" not in config or not method.get("engine_version"):
+            raise ValueError("composite pathway requires reviewed endpoints and pinned ORCA version")
+        _keywords(high)
+        for key in ("temperature_K", "pressure_atm"):
+            _positive(high[key], key)
+    _keywords(method)
     q, mult = config["charge"], config["multiplicity"]
     label = _identifier(method["id"], "method id") + "-" + branch
     tasks = []
 
-    def emit(name, stage, directive, geometry, orbitals=None, extra=None, block="", products=()):
+    def emit(name, stage, directive, geometry, orbitals=None, extra=None, block="", products=(), model=None):
+        model = method if model is None else model
+        keywords = _keywords(model)
+        requires = _strings(model.get("requires", []), "requires")
+        resources = overrides.get(stage, base)
+        cores = resources["cores"]
+        maxcore = resources["memory_mb"] * 3 // (4 * cores)
+        if maxcore < 1:
+            raise ValueError("insufficient per-rank memory")
         task_id = label + "-" + name
         deck_name = task_id + ".inp"
         bindings = dict(extra or {})
@@ -142,6 +193,8 @@ def _emit_chain(config, method, output, guess, branch):
         block, directive = "%geom Calc_Hess true end\n", "OptTS"
     ts = emit("ts", "ts", directive, None, block=block, products=(".xyz", ".gbw"))
 
+    stationary_results = []
+
     def finish_stationary(parent, name):
         geom, orb = artifact(parent, ".xyz"), artifact(parent, ".gbw")
         if method.get("stability", False):
@@ -153,7 +206,19 @@ def _emit_chain(config, method, output, guess, branch):
         freq_keyword = method.get("frequency_keyword", "Freq")
         if freq_keyword not in {"Freq", "NumFreq", "AnFreq"}:
             raise ValueError("unknown frequency method")
-        return emit(name + "-freq", "freq", freq_keyword, geom, orb, extra=prerequisite, products=(".hess",))
+        block = ""
+        if high is not None:
+            condition = {k: high[k] for k in ("temperature_K", "pressure_atm")}
+            block = f"%freq Temp {condition['temperature_K']} Pressure {condition['pressure_atm']} end\n"
+        freq = emit(name + "-freq", "freq", freq_keyword, geom, orb, extra=prerequisite,
+                    block=block, products=(".hess",))
+        if high is not None:
+            tasks[-1]["thermochemistry_condition"] = condition
+            single = emit(name + "-sp", "sp", "SP", geom, orb, extra=prerequisite, model=high)
+            if "max_s2_deviation" in config:
+                tasks[-1]["state_diagnostics"] = {"multiplicity": mult, "max_s2_deviation": config["max_s2_deviation"]}
+            stationary_results.append((name, parent, freq, single))
+        return freq
 
     frequency = finish_stationary(ts, "ts")
     irc = emit("irc", "irc", "IRC", artifact(ts, ".xyz"), artifact(ts, ".gbw"),
@@ -180,7 +245,63 @@ def _emit_chain(config, method, output, guess, branch):
         tasks.append({"id": report_id, "engine": "analysis", "stage": "mechanism", "input": input_name,
                       "from_deps": endpoint_inputs, "deps": endpoint_producers, "outputs": ["endpoints.json"],
                       "resources": {"cores": 1, "memory_mb": 256, "scratch_mb": 1}})
+    for name, parent, freq, single in stationary_results:
+        task_id = label + "-" + name + "-gibbs"
+        input_name = task_id + ".json"
+        producers = {"optimization": parent, "frequency": freq, "single": single,
+                     "endpoints": report_id}
+        bindings = {role + ".json": producer + ("/endpoints.json" if role == "endpoints" else "/values.json")
+                    for role, producer in producers.items()}
+        _write(output / input_name, {
+            "operation": "pathway_gibbs", "point": name, "condition": {k: high[k] for k in ("temperature_K", "pressure_atm")},
+            "engine_version": method["engine_version"], "charge": q, "multiplicity": mult,
+            "decks": {role: {"name": job + ".inp", "sha256": _digest(output / (job + ".inp"))}
+                      for role, job in producers.items() if role != "endpoints"},
+            "records": {role: {"$artifact": role + ".json", "path": []} for role in producers}})
+        tasks.append({"id": task_id, "engine": "analysis", "stage": "mechanism", "input": input_name,
+                      "from_deps": bindings, "deps": list(producers.values()), "outputs": ["gibbs.json"],
+                      "resources": {"cores": 1, "memory_mb": 256, "scratch_mb": 1}})
     return tasks
+
+
+def pathway_gibbs(data):
+    records = data["records"]
+    point = data["point"]
+    if point not in {"ts", "end-F", "end-B"} or records["endpoints"]["status"] != "pass":
+        raise ValueError("qualified IRC endpoints required")
+    geom_name = str(Path(data["decks"]["optimization"]["name"]).with_suffix(".xyz"))
+    geom = records["optimization"]["geometry_sha256"][geom_name]
+    if not re.fullmatch(r"[a-f0-9]{64}", geom):
+        raise ValueError("invalid optimized geometry hash")
+    if point != "ts":
+        side = point.removeprefix("end-")
+        if records["endpoints"]["geometry_sha256"][side] != geom:
+            raise ValueError("endpoint match refers to a different optimized geometry")
+    if not records["optimization"]["observations"].get("optimization_converged"):
+        raise ValueError("unconverged stationary point")
+    for role in ("optimization", "frequency", "single"):
+        rec, deck = records[role], data["decks"][role]
+        if (not rec["observations"]["normal_termination"]
+                or rec["observations"]["engine_version"] != data["engine_version"]
+                or not re.fullmatch(r"[a-f0-9]{64}", deck["sha256"])
+                or rec["input_sha256"].get(deck["name"]) != deck["sha256"]):
+            raise ValueError("ORCA version, completion or deck identity mismatch")
+        if role != "optimization" and rec["input_sha256"].get("structure.xyz") != geom:
+            raise ValueError("frequency and single-point calculations must share the optimized geometry")
+    freq = records["frequency"]["observations"]
+    if freq["imaginary_modes_below_tolerance"] != int(point == "ts"):
+        raise ValueError("stationary-point identity mismatch")
+    thermo = freq["thermochemistry"]
+    if any(thermo[k] != data["condition"][k] for k in ("temperature_K", "pressure_atm")):
+        raise ValueError("thermal condition mismatch")
+    energy = records["single"]["observations"]["electronic_energy_eh"]
+    correction = thermo["correction_eh"]
+    if not all(type(v) in (int, float) and math.isfinite(v) for v in (energy, correction, energy + correction)):
+        raise ValueError("nonfinite pathway energy")
+    return {"operation": "pathway_gibbs", "point": point, "charge": data["charge"],
+            "multiplicity": data["multiplicity"], "geometry_sha256": geom, "condition": data["condition"],
+            "engine_version": data["engine_version"], "decks": data["decks"],
+            "electronic_eh": energy, "thermal_correction_eh": correction, "gibbs_eh": energy + correction}
 
 
 def match_endpoints(data):

@@ -67,7 +67,7 @@ def _disposition(stage, report):
         return report["status"]
     if operation == "interval_kinetics":
         return "pass" if report["status"] == "compatible" else "indeterminate"
-    if operation in ("isotope_observables", "eyring", "freeze_prediction", "solution_cycle"):
+    if operation in ("isotope_observables", "eyring", "freeze_prediction", "solution_cycle", "pathway_gibbs"):
         return "not_applicable"
     if operation in ("irc_endpoints", "salt_quantity"):
         return report["status"]

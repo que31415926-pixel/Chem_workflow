@@ -5,7 +5,7 @@ import unittest
 
 from chemflow2 import mechanism
 from chemflow2.ion_pairs import prepare
-from chemflow2.pathway import check_stationary_observations, compile_pathway
+from chemflow2.pathway import check_stationary_observations, compile_pathway, pathway_gibbs, read_thermochemistry
 from chemflow2.protocol import load_plan
 from chemflow2.worker import Rejected, read_orca_log, validate_deck
 
@@ -49,6 +49,61 @@ class PathwayTests(unittest.TestCase):
         self.inp.write_text(json.dumps(spec))
         with self.assertRaisesRegex(ValueError, "electronic state"):
             compile_pathway(self.inp, self.root / "rejected")
+
+    def test_split_control_siblings_and_verified_composite(self):
+        import hashlib
+        spec = dict(id="path", xyz="seed.xyz", approved_by="reviewer", source="test",
+                    charge=0, multiplicity=1, coordination="declared", imaginary_tolerance_cm1=22,
+                    endpoint_signatures={"r": [[0, 1, 0.4, 1.0]], "p": [[0, 1, 1.3, 2.0]]},
+                    methods=[dict(id="m", keywords="HF def2-SVP", resources=self.resources,
+                                  stage_resources={"sp": dict(cores=1, memory_mb=1024, scratch_mb=20)},
+                                  engine_version="6.1.0", single_point=dict(keywords="HF def2-TZVP",
+                                      requires=["sp-model"], temperature_K=298.15, pressure_atm=1.0))])
+        self.inp.write_text(json.dumps(spec))
+        compile_pathway(self.inp, self.out)
+        tasks = {t["id"]: t for t in load_plan(self.out/"plan.json")["tasks"]}
+        for point in ("ts", "end-F", "end-B"):
+            parent = tasks["m-default-" + point]
+            freq, sp, join = (tasks[parent["id"] + "-" + suffix] for suffix in ("freq", "sp", "gibbs"))
+            self.assertEqual(sp["from_deps"], freq["from_deps"])
+            self.assertEqual(sp["deps"], [parent["id"]])
+            self.assertEqual(sp["requires"], ["sp-model"])
+            self.assertEqual(sp["resources"]["cores"], 1)
+            self.assertEqual(freq["resources"]["cores"], 2)
+            self.assertIn(sp["id"], join["deps"])
+            self.assertIn(freq["id"], join["deps"])
+            self.assertIn("m-default-match-ends", join["deps"])
+            request = json.loads((self.out/join["input"]).read_bytes())
+            geometry = "a" * 64
+            records = {"endpoints": {"status": "pass", "geometry_sha256": {"F": geometry, "B": geometry}}}
+            for role, task in (("optimization", parent), ("frequency", freq), ("single", sp)):
+                sha = hashlib.sha256((self.out/task["input"]).read_bytes()).hexdigest()
+                records[role] = {"input_sha256": {task["input"]: sha, "structure.xyz": geometry},
+                                 "observations": {"normal_termination": True, "engine_version": "6.1.0"}}
+            records["optimization"]["observations"]["optimization_converged"] = True
+            records["optimization"]["geometry_sha256"] = {parent["id"]+".xyz": geometry}
+            records["frequency"]["observations"].update(imaginary_modes_below_tolerance=int(point=="ts"),
+                thermochemistry=dict(temperature_K=298.15, pressure_atm=1, correction_eh=-.02))
+            records["single"]["observations"]["electronic_energy_eh"] = -4
+            request["records"] = records
+            self.assertAlmostEqual(mechanism.evaluate(request)["gibbs_eh"], -4.02)
+            records["single"]["input_sha256"]["structure.xyz"] = "b"*64
+            with self.assertRaisesRegex(ValueError, "optimized geometry"):
+                pathway_gibbs(request)
+
+    def test_thermal_output_uses_one_complete_condition(self):
+        path = self.root/"orca.out"
+        block = ("THERMOCHEMISTRY AT 298.15K\n Temperature ... 298.15 K\n"
+                 "Pressure ... 1.00 atm\n G-E(el) ... -0.020000 Eh -12.55 kcal/mol\n")
+        condition = dict(temperature_K=298.15, pressure_atm=1.0)
+        path.write_text(block + block.replace("298.15", "300.00").replace("-0.020000","0.010000"))
+        self.assertEqual(read_thermochemistry(path, condition)["correction_eh"], -.02)
+        path.write_text(block + block)
+        with self.assertRaisesRegex(Rejected, "ambiguous"):
+            read_thermochemistry(path, condition)
+        path.write_text(block.replace("1.00 atm", "1.01 atm"))
+        with self.assertRaisesRegex(Rejected, "missing"):
+            read_thermochemistry(path, condition)
 
     def test_numerical_gates(self):
         log = self.root / "orca.out"

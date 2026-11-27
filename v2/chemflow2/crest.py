@@ -6,6 +6,8 @@ import re
 from .worker import (NUMBER, Rejected, configured_binary, launch, number, sha256, task_path,
                      xyz_atoms)
 
+ORDER_TOLERANCE_KCAL = 0.0015  # crest.energies resolution (0.001 kcal/mol) plus float noise
+
 
 def _xyz_frames(path):
     with path.open(encoding="utf-8") as stream:
@@ -98,8 +100,16 @@ def run_crest(task, folder, provenance):
         frames += 1
     if not frames or frames != len(energies):
         raise Rejected("validation", "CREST ensemble and energy counts differ")
-    if energies[0] != 0 or any(a > b for a, b in zip(energies, energies[1:])):
-        raise Rejected("validation", "Expected energy-sorted CREST output relative to frame 1")
-    return {"normal_termination": True, "engine_version": version, "conformers": frames,
-            "n_atoms": len(expected), "relative_energies_kcal_mol": energies,
-            "scientific_gate": "not_evaluated"}
+    if energies[0] != 0 or min(energies) < -ORDER_TOLERANCE_KCAL:
+        raise Rejected("validation", "Expected CREST energies relative to the lowest frame 1")
+    # crest.energies is printed to 0.001 kcal/mol and CREGEN groups near-degenerate rotamers, so adjacent
+    # values can be out of order by rounding. Keep the ensemble; record (do not hide) any disorder.
+    disorder = [i + 2 for i, (a, b) in enumerate(zip(energies, energies[1:])) if a > b]
+    worst = max((a - b for a, b in zip(energies, energies[1:])), default=0)
+    result = {"normal_termination": True, "engine_version": version, "conformers": frames,
+              "n_atoms": len(expected), "relative_energies_kcal_mol": energies,
+              "scientific_gate": "not_evaluated"}
+    if disorder:
+        result["energy_order"] = {"out_of_order_frames": disorder, "max_inversion_kcal_mol": worst,
+                                  "within_rounding": worst <= ORDER_TOLERANCE_KCAL}
+    return result

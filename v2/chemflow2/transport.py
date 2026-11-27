@@ -33,8 +33,11 @@ def _relative(name):
 
 
 def _file(root, name):
-    path = root / _relative(name)
-    if path.resolve() != path:
+    relative = _relative(name)
+    path = root / relative
+    # Resolve the root once so a symlinked temporary directory (macOS: /var -> /private/var)
+    # is accepted, while a symlink anywhere below the root is still refused.
+    if path.resolve() != Path(root).resolve() / relative:
         raise TransportError(f"Symlink in transfer path: {name!r}")
     return path
 

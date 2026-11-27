@@ -201,6 +201,77 @@ def reconcile(path):
             "reported_net_usd":str(total - credited), "billing_lines":len(rows)}
 
 
+def settle(ledger, settlements, approved_by, evidence_note, finished, when=None):
+    """Replace finished runs' upper-bound holds by audited settled amounts. Pure; returns (ledger, record).
+
+    Holds are never deleted: each keeps its original bound and an audit block. A run still in progress,
+    an unknown run, a second settlement, or a settled amount above the original bound is refused.
+    """
+    if not approved_by.strip() or not evidence_note.strip():
+        raise ValueError("settlement needs the approving account holder and the billing evidence")
+    holds = ledger["holds"]
+    stamp = when or now().isoformat().replace("+00:00", "Z")
+    changes = []
+    for run, amount in settlements.items():
+        hold = holds.get(run)
+        if hold is None:
+            raise ValueError("no hold for " + run)
+        if hold.get("settled"):
+            raise ValueError(run + " is already settled")
+        if run not in finished:
+            raise ValueError(run + " is not confirmed finished; refusing to settle a live run")
+        value = money(amount)
+        original = money(hold["upper_usd"])
+        if value <= 0 or value > original:
+            raise ValueError(f"settled amount for {run} must be positive and not exceed {usd(original)}")
+        hold.update({"original_upper_usd": hold["upper_usd"], "upper_usd": usd(value), "settled": True,
+                     "settlement_audit": {"approved_by": approved_by, "evidence": evidence_note,
+                                          "settled_utc": stamp}})
+        changes.append({"run": run, "original_upper_usd": usd(original), "settled_upper_usd": usd(value)})
+    total = sum((money(v["upper_usd"]) for v in holds.values()), Decimal(0))
+    return ledger, {"changes": changes, "holds_total_after_usd": usd(total), "approved_by": approved_by,
+                    "evidence": evidence_note, "settled_utc": stamp}
+
+
+def finished_runs(profile, runs):
+    """Runs whose latest workflow execution is no longer ACTIVE (cloud builds count as finished)."""
+    done = set()
+    for run in runs:
+        if run.startswith("build-"):
+            done.add(run)
+            continue
+        state = subprocess.run(["gcloud", "--project=" + profile["project"], "workflows", "executions", "list",
+                                run, "--location=" + profile["region"], "--limit=1", "--format=value(state)"],
+                               capture_output=True, text=True)
+        if state.returncode == 0 and state.stdout.strip() in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+            done.add(run)
+        elif state.returncode != 0 and "NOT_FOUND" in state.stderr:
+            done.add(run)  # workflow never deployed: nothing can still be running
+    return done
+
+
+def settle_in_bucket(profile, settlements, approved_by, evidence_note, backup_dir):
+    obj = "gs://" + profile["bucket"] + "/chemflow-budget/v1/ledger.json"
+    cli = ["gcloud", "--project=" + profile["project"], "storage"]
+    backup_dir = Path(backup_dir)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    gen = subprocess.check_output([*cli, "objects", "describe", obj, "--format=value(generation)"],
+                                  text=True).strip()
+    if not gen.isdecimal():
+        raise ValueError("cannot establish current shared budget state")
+    backup = backup_dir / f"ledger_gen{gen}.json"
+    subprocess.run([*cli, "cp", obj + "#" + gen, str(backup)], check=True)
+    ledger = json.loads(backup.read_bytes())
+    ledger, record = settle(ledger, settlements, approved_by, evidence_note,
+                            finished_runs(profile, settlements))
+    new = backup_dir / f"ledger_after_gen{gen}.json"
+    new.write_text(json.dumps(ledger))
+    subprocess.run([*cli, "cp", "--if-generation-match=" + gen, str(new), obj], check=True)
+    record.update(ledger_generation_before=gen, backup=str(backup))
+    (backup_dir / f"settlement_gen{gen}.json").write_text(json.dumps(record, indent=2, ensure_ascii=False))
+    return record
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     verbs = parser.add_subparsers(dest="verb", required=True)
@@ -209,7 +280,19 @@ def main(argv=None):
     q.add_argument("allocations",type=Path)
     r = verbs.add_parser("reconcile")
     r.add_argument("manifest",type=Path)
+    st = verbs.add_parser("settle", help="settle finished runs' holds after the account holder audits billing")
+    st.add_argument("profile", type=Path)
+    st.add_argument("settlement", nargs="+", help="RUN=USD, e.g. cf-0123...=3.00 (finished runs only)")
+    st.add_argument("--approved-by", required=True)
+    st.add_argument("--evidence", required=True, help="what the holder checked, e.g. console credit and date")
+    st.add_argument("--backup-dir", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.verb == "settle":
+        pairs = dict(item.split("=", 1) for item in args.settlement)
+        profile = json.loads(args.profile.read_bytes())
+        print(json.dumps(settle_in_bucket(profile, pairs, args.approved_by, args.evidence, args.backup_dir),
+                         indent=2, ensure_ascii=False))
+        return
     if args.verb == "quote":
         profile = json.loads(args.profile.read_bytes())
         allocations = json.loads(args.allocations.read_bytes())

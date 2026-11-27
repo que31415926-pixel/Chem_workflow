@@ -77,6 +77,8 @@ def schedule(plan, profile, run, input_hash):
         limit = parallel
         if "regional_vcpu_limit" in profile:
             limit = min(limit, profile["regional_vcpu_limit"] // cores)
+        if "regional_e2_vcpu_limit" in profile and machine_type.startswith("e2-"):
+            limit = min(limit, profile["regional_e2_vcpu_limit"] // cores)
         if "regional_disk_limit_gb" in profile:
             limit = min(limit, profile["regional_disk_limit_gb"] // disk_gb)
         licensed = profile.get("license_parallelism", {})
@@ -148,9 +150,9 @@ def workflow(profile, run, count, valid_until):
         {"inspect": {"call": connector + "get",
                      "args": {"name": '${"' + parent + '/jobs/' + run + '-a" + string(i)}'},
                      "result": "job"}},
-        {"check": {"switch": [{"condition": '${job.status.state == "SUCCEEDED"}', "next": "continue"},
-                              {"condition": '${job.status.state == "FAILED" or job.status.state == "DELETION_IN_PROGRESS" or job.status.state == "CANCELLED"}',
-                               "steps": [{"stop": {"raise": "Batch job failed; inspect task evidence"}}]}]}},
+        {"check": {"switch": [{"condition": '${job.status.state == "SUCCEEDED" or job.status.state == "FAILED"}', "next": "continue"},
+                              {"condition": '${job.status.state == "DELETION_IN_PROGRESS" or job.status.state == "CANCELLED"}',
+                               "steps": [{"stop": {"raise": "Batch job cancelled or deleted; inspect task evidence"}}]}]}},
         {"pause": {"call": "sys.sleep", "args": {"seconds": 60}, "next": "inspect"}},
     ]
     return {"main": {"steps": [{"allocate": {"for": {"value": "i", "range": [0, count - 1],

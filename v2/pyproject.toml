@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chemflow-research-engine"
-version = "2.0.0.dev3"
+version = "2.0.0.dev4"
 description = "Compile, schedule and verify computational chemistry studies"
 requires-python = ">=3.10"
 readme = "README.md"

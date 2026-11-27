@@ -17,6 +17,9 @@ MACHINES = [
 ]
 
 
+MPI_ENVIRONMENT = {"OMPI_MCA_hwloc_base_use_hwthreads_as_cpus": "1",
+                   "OMPI_MCA_rmaps_base_oversubscribe": "1"}
+
 def encoded(data):
     return json.dumps(data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
@@ -99,6 +102,10 @@ def schedule(plan, profile, run, input_hash):
                         schedule_path, sha(encoded(control))]
             task = {"computeResource": {"cpuMilli": resources["cores"] * 1000,
                                         "memoryMib": resources["memory_mb"]},
+                    # E2 vCPUs are hyperthreads: e2-*-4 has 4 vCPUs on 2 cores. Open MPI counts cores
+                    # by default, so `mpirun -np 4` (ORCA %pal nprocs 4) refused to start. The scheduler
+                    # never requests more cores than the VM has vCPUs, so count hardware threads.
+                    "environment": {"variables": MPI_ENVIRONMENT},
                     "maxRunDuration": f"{hours * 3600}s", "maxRetryCount": 0,
                     "runnables": [{"container": {"imageUri": profile["image"],
                                                   "entrypoint": "python3", "commands": commands}}]}

@@ -54,6 +54,12 @@ class WorkflowAndQuota(BatchDagTests):
         self.assertIn("cancelled or deleted", wf)
         self.assertNotIn("Batch job failed;", wf)
 
+    def test_jobs_let_open_mpi_use_all_vcpus(self):
+        rows = batch_dag.schedule(self.plan, self.profile, RUN, "a" * 64)
+        for row in rows:
+            env = row["spec"]["taskGroups"][0]["taskSpec"]["environment"]["variables"]
+            self.assertEqual(env["OMPI_MCA_hwloc_base_use_hwthreads_as_cpus"], "1")
+
     def test_e2_family_quota_caps_parallel_vms(self):
         for i in range(5):
             self.plan["tasks"].append(dict(self.plan["tasks"][0], id="probe-" + str(i)))

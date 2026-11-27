@@ -20,6 +20,13 @@ MACHINES = [
 MPI_ENVIRONMENT = {"OMPI_MCA_hwloc_base_use_hwthreads_as_cpus": "1",
                    "OMPI_MCA_rmaps_base_oversubscribe": "1"}
 
+def shm_option(memory_mb):
+    """Docker gives containers a 64 MB /dev/shm. Multi-process ORCA allocates MPI shared-memory windows there
+    (MPI_Win_allocate_shared in LEANSCF needed ~84 MB for a 42-atom r2SCAN-3c CPCM job), so give the container
+    half of the task's memory reservation as tmpfs. tmpfs pages count against memory only when written."""
+    return f"--shm-size={max(1024, int(memory_mb) // 2)}m"
+
+
 def encoded(data):
     return json.dumps(data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
@@ -108,7 +115,8 @@ def schedule(plan, profile, run, input_hash):
                     "environment": {"variables": MPI_ENVIRONMENT},
                     "maxRunDuration": f"{hours * 3600}s", "maxRetryCount": 0,
                     "runnables": [{"container": {"imageUri": profile["image"],
-                                                  "entrypoint": "python3", "commands": commands}}]}
+                                                  "entrypoint": "python3", "commands": commands,
+                                                  "options": shm_option(resources["memory_mb"])}}]}
             policy = {"machineType": machine_type, "bootDisk": {"type": "pd-balanced",
                                                                 "sizeGb": disk_gb}}
             spec = {"labels": {"chemflow-run": run},

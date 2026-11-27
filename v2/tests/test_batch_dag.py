@@ -159,6 +159,7 @@ class BatchDagTests(unittest.TestCase):
                 task = spec["taskGroups"][0]["taskSpec"]
                 self.assertEqual(task["runnables"][0]["container"]["commands"][-1],
                                  batch_dag.sha(controls[f"pieces/{index}.json"]))
+                self.assertRegex(task["runnables"][0]["container"]["options"], r"^--shm-size=\d+m$")
             self.assertEqual(batch_dag.sha(controls["input.tgz"]),
                              json.loads(controls["submission.json"])["input_hash"])
 

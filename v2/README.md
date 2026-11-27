@@ -1,4 +1,4 @@
-# ChemFlow 2.0 dev3
+# ChemFlow 2.0 dev4
 
 笔记本编译研究协议，云端按依赖运行计算，结果可按任务取回并校验。客户端需要 Python 3.10+。从仓库根目录进入 v2 后运行以下命令。该示例只在本地生成输入和调度计划。
 
@@ -11,6 +11,8 @@ python3 -m chemflow2 batch plan examples/batch-profile.example.json water-inputs
 ```
 
 可在虚拟环境中用 `python3 -m pip install ./v2` 从仓库根目录安装命令行工具。安装后可从任意目录运行 `chemflow2 --help`。本地执行动力学积分时可安装 `./v2[kinetics]`。
+
+可选的路径对照允许频率和高层单点同时读取同一已优化几何。组装 Gibbs 自由能前核对方法、几何摘要、驻点、IRC 端点和输出中的温压。实际墙钟与精度须在同条件的串行对照上测量。配置见 [路径对照](docs/pathway-and-solvation.md)。
 
 ## 运行自己的研究
 

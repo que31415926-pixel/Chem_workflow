@@ -20,7 +20,7 @@ Run `python3 -m chemflow2.pathway private/path.json path-bundle`, then submit `p
     "keywords": "PBE0 D4 def2-TZVP TightSCF CPCM(THF)",
     "frequency_keyword": "Freq",
     "stability": true,
-    "engine_version": "6.1.1",
+    "engine_version": "6.1.0",
     "guess_files": ["alternative-orbitals.gbw"],
     "requires": ["orca6-native"],
     "resources": {"cores": 4, "memory_mb": 16384, "scratch_mb": 32768}

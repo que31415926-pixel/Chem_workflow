@@ -26,7 +26,7 @@ class BootstrapTests(unittest.TestCase):
                          "deploy/byol.Dockerfile", "projects/secret/geometry.xyz", "credentials.json"):
                 (root/name).parent.mkdir(parents=True, exist_ok=True)
                 (root/name).write_text("fixture")
-            installer = root/"orca_6_1_0_linux_x86-64_shared_openmpi416.run"
+            installer = root/"orca_6_1_0_linux_x86-64_shared_openmpi418.run"
             installer.write_bytes(b"fixture")
             target = root/"source.tgz"
             setup.stage(root, installer, target)
@@ -37,7 +37,7 @@ class BootstrapTests(unittest.TestCase):
     def test_live_build_fails_before_cloud_if_budget_unverified(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            installer = root/"orca_6_1_0_linux_x86-64_shared_openmpi416.run"
+            installer = root/"orca_6_1_0_linux_x86-64_shared_openmpi418.run"
             installer.write_bytes(b"fixture")
             with patch.object(setup, "call", side_effect=AssertionError), self.assertRaises(FileNotFoundError):
                 setup.main(["trial-project", "--apply", "--byol-confirmed", "--installer", str(installer),

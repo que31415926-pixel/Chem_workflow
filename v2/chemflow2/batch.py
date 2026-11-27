@@ -95,8 +95,13 @@ def quota_profile(profile):
     if any(q["metric"] == "CPUS_ALL_REGIONS" for q in global_limits.get("quotas", [])):
         cpus = min(cpus, headroom(global_limits, "CPUS_ALL_REGIONS"))
     disk = headroom(regional, "SSD_TOTAL_GB")
-    return dict(profile, regional_vcpu_limit=min(cpus, profile.get("regional_vcpu_limit", cpus)),
-                regional_disk_limit_gb=min(disk, profile.get("regional_disk_limit_gb", disk)))
+    limits = dict(profile, regional_vcpu_limit=min(cpus, profile.get("regional_vcpu_limit", cpus)),
+                  regional_disk_limit_gb=min(disk, profile.get("regional_disk_limit_gb", disk)))
+    # Every supported machine is E2; E2_CPUS is a separate, often smaller, regional quota.
+    if any(q["metric"] == "E2_CPUS" for q in regional.get("quotas", [])):
+        e2 = headroom(regional, "E2_CPUS")
+        limits["regional_e2_vcpu_limit"] = min(e2, profile.get("regional_e2_vcpu_limit", e2))
+    return limits
 
 
 def lifecycle(profile, run):

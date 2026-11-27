@@ -20,3 +20,18 @@ python3 -m chemflow2.budget reconcile private/billing-manifest.json
 ```
 
 `allocations.json` 可直接使用 batch plan 的 JSON 输出，也接受数组。每行提供 `id, task_ids, machine_type, max_instances, max_hours, disk_gb`。对账清单包含 `project, run_id, billing_export, receipts`。其中 billing_export 为 `{"file":"billing-lines.csv","sha256":"..."}`，receipts 是同格式的回执引用数组。CSV 采用 `line_id,project,run_id,currency,gross_usd,credit_usd`；从完整提供商账单及资源标签提取归属于该次研究的费用，使用唯一行 ID，优惠额度填正数。结果给出观测任务、导出记录毛额、抵扣额及净额。导出的完整性、共享成本归属及账单最终性须独立复核。没有账单，无法计算一个账号最终覆盖的实验数。
+
+## 结算已结束运行的预留
+
+预留在运行结束后不会自动释放。账号持有人对照控制台账单（试用赠金余额、当月费用）确认实际花费之后，可以把**已经结束**的运行改按审计后的金额结算：
+
+```sh
+python3 -m chemflow2.budget settle profile.json build-xxxx=3.00 cf-xxxx=3.00 \
+  --approved-by "账号持有人" --evidence "控制台：赠金剩余 USD 298.71，当月费用 0.00（2026-11-26 22:10）" \
+  --backup-dir private/budget_audit
+```
+
+- 命令会查询各运行最近一次工作流执行的状态，**仍在运行的一律拒绝结算**；云构建 `build-*` 视为已结束，从未部署的运行也视为已结束。
+- 结算金额必须为正，且不超过原预留。已经结算过的运行不会再结算第二次。
+- 账本条目一律不删除，每条都保留原上限 `original_upper_usd` 和审计信息 `settlement_audit`。
+- 写回账本使用 generation 条件，结算前的版本备份到 `--backup-dir`。

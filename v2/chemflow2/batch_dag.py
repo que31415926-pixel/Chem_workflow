@@ -17,6 +17,16 @@ MACHINES = [
 ]
 
 
+MPI_ENVIRONMENT = {"OMPI_MCA_hwloc_base_use_hwthreads_as_cpus": "1",
+                   "OMPI_MCA_rmaps_base_oversubscribe": "1"}
+
+def shm_option(memory_mb):
+    """Docker gives containers a 64 MB /dev/shm. Multi-process ORCA allocates MPI shared-memory windows there
+    (MPI_Win_allocate_shared in LEANSCF needed ~84 MB for a 42-atom r2SCAN-3c CPCM job), so give the container
+    half of the task's memory reservation as tmpfs. tmpfs pages count against memory only when written."""
+    return f"--shm-size={max(1024, int(memory_mb) // 2)}m"
+
+
 def encoded(data):
     return json.dumps(data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
@@ -77,6 +87,8 @@ def schedule(plan, profile, run, input_hash):
         limit = parallel
         if "regional_vcpu_limit" in profile:
             limit = min(limit, profile["regional_vcpu_limit"] // cores)
+        if "regional_e2_vcpu_limit" in profile and machine_type.startswith("e2-"):
+            limit = min(limit, profile["regional_e2_vcpu_limit"] // cores)
         if "regional_disk_limit_gb" in profile:
             limit = min(limit, profile["regional_disk_limit_gb"] // disk_gb)
         licensed = profile.get("license_parallelism", {})
@@ -97,9 +109,14 @@ def schedule(plan, profile, run, input_hash):
                         schedule_path, sha(encoded(control))]
             task = {"computeResource": {"cpuMilli": resources["cores"] * 1000,
                                         "memoryMib": resources["memory_mb"]},
+                    # E2 vCPUs are hyperthreads: e2-*-4 has 4 vCPUs on 2 cores. Open MPI counts cores
+                    # by default, so `mpirun -np 4` (ORCA %pal nprocs 4) refused to start. The scheduler
+                    # never requests more cores than the VM has vCPUs, so count hardware threads.
+                    "environment": {"variables": MPI_ENVIRONMENT},
                     "maxRunDuration": f"{hours * 3600}s", "maxRetryCount": 0,
                     "runnables": [{"container": {"imageUri": profile["image"],
-                                                  "entrypoint": "python3", "commands": commands}}]}
+                                                  "entrypoint": "python3", "commands": commands,
+                                                  "options": shm_option(resources["memory_mb"])}}]}
             policy = {"machineType": machine_type, "bootDisk": {"type": "pd-balanced",
                                                                 "sizeGb": disk_gb}}
             spec = {"labels": {"chemflow-run": run},
@@ -140,17 +157,22 @@ def workflow(profile, run, count, valid_until):
         {"skip": {"switch": [{"condition": "${eligible == false}", "next": "continue"}]}},
         {"checkAuthorization": {"switch": [{"condition": '${sys.now() >= time.parse("' + valid_until + '")}',
                                             "steps": [{"expired": {"raise": "Budget authorization expired"}}]}]}},
-        {"submit": {"call": connector + "create", "args": {
+        # The connector waits for the job and raises OperationError when it ends FAILED (one task failed).
+        # Catch only that, so the inspect/check steps below decide: FAILED -> continue, CANCELLED -> stop.
+        {"submit": {"try": {"call": connector + "create", "args": {
             "parent": parent, "jobId": '${"' + run + '-a" + string(i)}',
             "body": "${object.body.spec}", "connector_params": {
                 "timeout": 7 * 86400 + 3600,
-                "polling_policy": {"initial_delay": 5, "multiplier": 1.5, "max_delay": 120}}}}},
+                "polling_policy": {"initial_delay": 5, "multiplier": 1.5, "max_delay": 120}}}},
+                    "except": {"as": "e", "steps": [
+                        {"failedJob": {"switch": [{"condition": '${"OperationError" in e.tags}', "next": "inspect"}]}},
+                        {"rethrow": {"raise": "${e}"}}]}}},
         {"inspect": {"call": connector + "get",
                      "args": {"name": '${"' + parent + '/jobs/' + run + '-a" + string(i)}'},
                      "result": "job"}},
-        {"check": {"switch": [{"condition": '${job.status.state == "SUCCEEDED"}', "next": "continue"},
-                              {"condition": '${job.status.state == "FAILED" or job.status.state == "DELETION_IN_PROGRESS" or job.status.state == "CANCELLED"}',
-                               "steps": [{"stop": {"raise": "Batch job failed; inspect task evidence"}}]}]}},
+        {"check": {"switch": [{"condition": '${job.status.state == "SUCCEEDED" or job.status.state == "FAILED"}', "next": "continue"},
+                              {"condition": '${job.status.state == "DELETION_IN_PROGRESS" or job.status.state == "CANCELLED"}',
+                               "steps": [{"stop": {"raise": "Batch job cancelled or deleted; inspect task evidence"}}]}]}},
         {"pause": {"call": "sys.sleep", "args": {"seconds": 60}, "next": "inspect"}},
     ]
     return {"main": {"steps": [{"allocate": {"for": {"value": "i", "range": [0, count - 1],

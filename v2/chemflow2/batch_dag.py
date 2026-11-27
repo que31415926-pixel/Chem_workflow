@@ -149,11 +149,16 @@ def workflow(profile, run, count, valid_until):
         {"skip": {"switch": [{"condition": "${eligible == false}", "next": "continue"}]}},
         {"checkAuthorization": {"switch": [{"condition": '${sys.now() >= time.parse("' + valid_until + '")}',
                                             "steps": [{"expired": {"raise": "Budget authorization expired"}}]}]}},
-        {"submit": {"call": connector + "create", "args": {
+        # The connector waits for the job and raises OperationError when it ends FAILED (one task failed).
+        # Catch only that, so the inspect/check steps below decide: FAILED -> continue, CANCELLED -> stop.
+        {"submit": {"try": {"call": connector + "create", "args": {
             "parent": parent, "jobId": '${"' + run + '-a" + string(i)}',
             "body": "${object.body.spec}", "connector_params": {
                 "timeout": 7 * 86400 + 3600,
-                "polling_policy": {"initial_delay": 5, "multiplier": 1.5, "max_delay": 120}}}}},
+                "polling_policy": {"initial_delay": 5, "multiplier": 1.5, "max_delay": 120}}}},
+                    "except": {"as": "e", "steps": [
+                        {"failedJob": {"switch": [{"condition": '${"OperationError" in e.tags}', "next": "inspect"}]}},
+                        {"rethrow": {"raise": "${e}"}}]}}},
         {"inspect": {"call": connector + "get",
                      "args": {"name": '${"' + parent + '/jobs/' + run + '-a" + string(i)}'},
                      "result": "job"}},

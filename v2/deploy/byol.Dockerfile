@@ -12,14 +12,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && rm -rf /var/lib/apt/lists/*
 RUN curl -fsSL "https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-${OMPI_VERSION}.tar.bz2" -o /tmp/ompi.tar.bz2 \
     && tar -xjf /tmp/ompi.tar.bz2 -C /tmp && cd /tmp/openmpi-${OMPI_VERSION} \
-    && ./configure --prefix=/opt/openmpi --disable-mpi-fortran --without-verbs > /dev/null \
+    && ./configure --prefix=/opt/openmpi --without-verbs > /dev/null \
     && make -j"$(nproc)" > /dev/null && make install > /dev/null && rm -rf /tmp/openmpi-* /tmp/ompi.tar.bz2
 
 FROM mambaorg/micromamba:2.0.5
 USER root
 # Open MPI (built from source above) needs an rsh/ssh agent binary to exist even for single-node launches;
 # without it mpirun aborts with "plm_rsh_agent: ssh : rsh ... could not be found" (build b1230b1b, 2026-11-26).
-RUN apt-get update && apt-get install -y --no-install-recommends openssh-client && rm -rf /var/lib/apt/lists/* && command -v ssh
+# libgfortran5: Open MPI is now built WITH Fortran bindings. ORCA's SCF modules call MPI_Type_match_size, which
+# returns MPI_ERR_ARG in a --disable-mpi-fortran build (run1b, 2026-11-26: every 4-process r2SCAN-3c job died in LEANSCF).
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client libgfortran5 && rm -rf /var/lib/apt/lists/* && command -v ssh
 # Exact versions = toolchain.lock.json (the versions resolved by build b1230b1b on 2026-11-26).
 # Change them only together with toolchain.lock.json; v2/tests/test_toolchain_lock.py checks they agree.
 RUN micromamba install -y -n base -c conda-forge python=3.12.16 crest=3.0.2 xtb=6.8.0 tblite=0.8.0 rdkit=2026.09.2 numpy=2.5.5 scipy=1.18.1 python-libsbml=5.20.5 google-cloud-storage=3.17.2 && micromamba clean --all --yes
@@ -34,7 +36,10 @@ ENV PATH=/opt/orca:/opt/openmpi/bin:/opt/conda/bin:${PATH} \
     CHEMFLOW_ORCA=/opt/orca/orca \
     OMPI_ALLOW_RUN_AS_ROOT=1 \
     OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
-    OMPI_MCA_plm=isolated
+    OMPI_MCA_plm=isolated \
+    OMPI_MCA_hwloc_base_use_hwthreads_as_cpus=1 \
+    OMPI_MCA_rmaps_base_oversubscribe=1
+# hwthreads: E2 vCPUs are hyperthreads (e2-*-4 = 2 cores); count them as MPI slots (run1b, 2026-11-26).
 # OMPI_MCA_plm=isolated: every ORCA job runs on one VM, so mpirun forks ranks locally and never needs ssh/rsh
 # (verified on the Mac with Open MPI 4.1.6 by the DeepSeek diagnosis of build b1230b1b). openssh-client above is a fallback.
 # Self-check (fix 2026-11-26). ORCA 6.1 no longer ships a separate orca_scf_mpi module, so the check no
@@ -57,7 +62,9 @@ RUN fail=0; \
     check xtb 'xtb --version'; \
     check python-stack 'python3 -c "import scipy, rdkit, libsbml, google.cloud.storage, chemflow2; print(\"python ok\")"'; \
     check orca-parallel-water 'mkdir -p /tmp/orcatest && cd /tmp/orcatest && printf "! HF def2-SVP\n%%pal nprocs 2 end\n* xyz 0 1\nO 0 0 0.117\nH 0 0.757 -0.467\nH 0 -0.757 -0.467\n*\n" > w.inp && /opt/orca/orca w.inp > w.out 2>&1; tail -n 15 w.out; grep -q "ORCA TERMINATED NORMALLY" w.out'; \
+    check orca-production-4proc 'mkdir -p /tmp/orcatest4 && cd /tmp/orcatest4 && printf "! r2SCAN-3c CPCM(THF) Opt\n%%pal nprocs 4 end\n%%maxcore 1000\n* xyz 0 1\nO 0 0 0.117\nH 0 0.757 -0.467\nH 0 -0.757 -0.467\n*\n" > w4.inp && /opt/orca/orca w4.inp > w4.out 2>&1; tail -n 15 w4.out; grep -q "ORCA TERMINATED NORMALLY" w4.out && ! grep -q "MPI_ERR" w4.out'; \
+    check mpi-fortran-bindings '{ ompi_info; ompi_info --parsable; } 2>/dev/null | grep -iE "Fort mpif.h: yes|bindings:mpif.h:yes" | tee /dev/stderr | grep -q .'; \
     grep -i -E "parallel|MPI-process" /tmp/orcatest/w.out 2>/dev/null | head -n 3 | sed 's/^/SELFCHECK INFO /'; \
-    rm -rf /tmp/orcatest /tmp/selfcheck.log; \
+    rm -rf /tmp/orcatest /tmp/orcatest4 /tmp/selfcheck.log; \
     if [ "$fail" -ne 0 ]; then echo "SELFCHECK RESULT: FAILED (see FAIL lines above)"; exit 1; fi; \
     echo "SELFCHECK RESULT: ALL PASSED"

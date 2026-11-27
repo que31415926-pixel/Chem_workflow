@@ -54,6 +54,16 @@ class WorkflowAndQuota(BatchDagTests):
         self.assertIn("cancelled or deleted", wf)
         self.assertNotIn("Batch job failed;", wf)
 
+    def test_failed_job_error_from_connector_is_caught(self):
+        wf = batch_dag.workflow(self.profile, RUN, 2, "2030-01-01T00:00:00Z")
+        steps = wf["main"]["steps"][0]["allocate"]["for"]["steps"]
+        submit = next(s["submit"] for s in steps if "submit" in s)
+        self.assertIn("try", submit)
+        handler = submit["except"]["steps"]
+        self.assertIn("OperationError", json.dumps(handler))
+        self.assertEqual(handler[0]["failedJob"]["switch"][0]["next"], "inspect")
+        self.assertIn("rethrow", handler[1])
+
     def test_jobs_let_open_mpi_use_all_vcpus(self):
         rows = batch_dag.schedule(self.plan, self.profile, RUN, "a" * 64)
         for row in rows:
